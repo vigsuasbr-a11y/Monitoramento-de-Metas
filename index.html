@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Monitoramento das Metas do PMAS 2026-2029</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <script defer src="config.js"></script>
+  <script defer src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <script defer src="script.js"></script>
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar" aria-label="Navegação do formulário">
+      <div class="sidebar-inner">
+        <div class="brand-card">
+          <div class="brand-icon" aria-hidden="true">
+            <i data-lucide="bar-chart-3"></i>
+          </div>
+          <div>
+            <p class="brand-kicker">PMAS</p>
+            <h2>Plano Municipal de Assistência Social</h2>
+            <strong>2026-2029</strong>
+          </div>
+        </div>
+
+        <div class="sidebar-divider"></div>
+
+        <section class="side-progress" aria-label="Progresso do preenchimento">
+          <div class="side-progress-row">
+            <span>Seu progresso</span>
+            <strong id="sideStepText">1 de 3</strong>
+          </div>
+          <div class="progress-track">
+            <div class="progress-fill" id="sideProgressBar"></div>
+          </div>
+          <p><span id="sideCompletionText">0%</span> das metas respondidas</p>
+        </section>
+
+        <nav class="stepper" aria-label="Etapas">
+          <button class="step-button is-active" type="button" data-step-target="1">
+            <span class="step-number">1</span>
+            <span>
+              <strong>Identificação</strong>
+              <small>Informações iniciais</small>
+            </span>
+          </button>
+          <button class="step-button" type="button" data-step-target="2">
+            <span class="step-number">2</span>
+            <span>
+              <strong>Metas executadas</strong>
+              <small>Marque Sim ou Não</small>
+            </span>
+          </button>
+          <button class="step-button" type="button" data-step-target="3">
+            <span class="step-number">3</span>
+            <span>
+              <strong>Conclusão</strong>
+              <small>Revisão e envio</small>
+            </span>
+          </button>
+        </nav>
+
+        <section class="help-card">
+          <div class="help-icon" aria-hidden="true">
+            <i data-lucide="circle-help"></i>
+          </div>
+          <div>
+            <h3>Precisa de ajuda?</h3>
+            <p>Entre em contato com a Secretaria de Assistência Social de Belford Roxo.</p>
+          </div>
+          <a href="mailto:assistenciasocial@prefeituradebelfordroxo.rj.gov.br" class="help-link">
+            Falar com a SEMASC
+            <i data-lucide="external-link"></i>
+          </a>
+        </section>
+      </div>
+    </aside>
+
+    <main class="workspace">
+      <header class="topbar">
+        <div class="title-block">
+          <span class="eyebrow">Prefeitura Municipal de Belford Roxo</span>
+          <h1>Monitoramento das Metas do Plano Municipal de Assistência Social 2026-2029</h1>
+          <p>
+            Formulário destinado ao monitoramento e acompanhamento das metas do Plano Municipal de Assistência Social de Belford Roxo, visando garantir o registro das ações executadas, o controle dos resultados alcançados e o fortalecimento da gestão socioassistencial do município.
+          </p>
+        </div>
+        <div class="autosave-pill" role="status">
+          <i data-lucide="shield-check"></i>
+          <span>Suas respostas são salvas automaticamente.</span>
+        </div>
+      </header>
+
+      <section class="metrics-grid" aria-label="Resumo do monitoramento">
+        <article class="metric-card">
+          <span class="metric-icon metric-total"><i data-lucide="list-checks"></i></span>
+          <div>
+            <small>Total de metas</small>
+            <strong id="totalMetas">0</strong>
+          </div>
+        </article>
+        <article class="metric-card">
+          <span class="metric-icon metric-yes"><i data-lucide="check-circle-2"></i></span>
+          <div>
+            <small>Executadas</small>
+            <strong id="simCount">0</strong>
+          </div>
+        </article>
+        <article class="metric-card">
+          <span class="metric-icon metric-no"><i data-lucide="x-circle"></i></span>
+          <div>
+            <small>Não executadas</small>
+            <strong id="noCount">0</strong>
+          </div>
+        </article>
+        <article class="metric-card metric-wide">
+          <div>
+            <small>Conclusão do preenchimento</small>
+            <strong><span id="completionPercent">0</span>%</strong>
+          </div>
+          <div class="mini-progress">
+            <div id="mainProgressBar"></div>
+          </div>
+        </article>
+      </section>
+
+      <form id="monitoringForm" novalidate>
+        <section class="form-step is-active" data-step="1">
+          <div class="panel">
+            <div class="section-heading">
+              <div class="section-icon" aria-hidden="true">
+                <i data-lucide="id-card"></i>
+              </div>
+              <div>
+                <span class="eyebrow">Etapa 1</span>
+                <h2>Identificação</h2>
+                <p>Informe os dados do responsável pelo preenchimento e da unidade/setor vinculado ao monitoramento.</p>
+              </div>
+            </div>
+
+            <div class="form-grid">
+              <label class="field">
+                <span>Nome <strong>*</strong></span>
+                <input type="text" id="nome" data-field="nome" placeholder="Informe seu nome">
+                <small class="field-error"></small>
+              </label>
+
+              <label class="field">
+                <span>Cargo <strong>*</strong></span>
+                <input type="text" id="cargo" data-field="cargo" placeholder="Informe seu cargo">
+                <small class="field-error"></small>
+              </label>
+
+              <label class="field">
+                <span>Setor/Unidade <strong>*</strong></span>
+                <input type="text" id="setor" data-field="setor" placeholder="Ex.: CRAS, CREAS, FMAS, CMAS">
+                <small class="field-error"></small>
+              </label>
+
+              <label class="field">
+                <span>Data de preenchimento <strong>*</strong></span>
+                <input type="date" id="dataPreenchimento" data-field="dataPreenchimento">
+                <small class="field-error"></small>
+              </label>
+
+              <label class="field">
+                <span>Telefone</span>
+                <input type="tel" id="telefone" data-field="telefone" placeholder="(21) 00000-0000">
+                <small class="field-error"></small>
+              </label>
+
+              <label class="field">
+                <span>E-mail</span>
+                <input type="email" id="email" data-field="email" placeholder="nome@dominio.gov.br">
+                <small class="field-error"></small>
+              </label>
+
+              <label class="field field-wide">
+                <span>Eixo do Plano Municipal de Assistência Social <strong>*</strong></span>
+                <select id="eixo" data-field="eixo">
+                  <option value="">Selecione o eixo vinculado</option>
+                  <option value="ORGÃO GESTOR">ORGÃO GESTOR</option>
+                  <option value="GESTÃO SUAS">GESTÃO SUAS</option>
+                  <option value="FUNDO MUNICIPAL">FUNDO MUNICIPAL</option>
+                  <option value="PROTEÇÃO SOCIAL BÁSICA (PSB)">PROTEÇÃO SOCIAL BÁSICA (PSB)</option>
+                  <option value="PROTEÇÃO SOCIAL ESPECIAL (PSE)">PROTEÇÃO SOCIAL ESPECIAL (PSE)</option>
+                  <option value="SEGURANÇA ALIMENTAR">SEGURANÇA ALIMENTAR</option>
+                  <option value="COMPLEXO DA CIDADANIA">COMPLEXO DA CIDADANIA</option>
+                  <option value="CONSELHO MUNICIPAL DE ASSISTÊNCIA SOCIAL (CMAS)">CONSELHO MUNICIPAL DE ASSISTÊNCIA SOCIAL (CMAS)</option>
+                  <option value="CONSELHO MUNICIPAL DE SEGURANÇA ALIMENTAR E NUTRICIONAL (COMSEA)">CONSELHO MUNICIPAL DE SEGURANÇA ALIMENTAR E NUTRICIONAL (COMSEA)</option>
+                </select>
+                <small class="field-error"></small>
+              </label>
+
+            </div>
+
+            <div class="step-actions">
+              <button class="ghost-button" type="button" data-action="clear-local">
+                <i data-lucide="eraser"></i>
+                Limpar rascunho
+              </button>
+              <button class="primary-button" type="button" data-action="next">
+                Próximo
+                <i data-lucide="arrow-right"></i>
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <section class="form-step" data-step="2">
+          <div class="panel">
+            <div class="section-heading">
+              <div class="section-icon" aria-hidden="true">
+                <i data-lucide="clipboard-list"></i>
+              </div>
+              <div>
+                <span class="eyebrow">Etapa 2</span>
+                <h2>Metas executadas</h2>
+                <p>Marque as metas que já foram executadas, concluídas ou alcançadas pelo setor até o presente momento.</p>
+              </div>
+            </div>
+
+            <div class="info-strip">
+              <i data-lucide="info"></i>
+              <span>Selecione "Sim" para as metas executadas. Se a meta ainda não foi executada, selecione "Não".</span>
+            </div>
+
+            <div class="toolbar">
+              <div>
+                <strong id="answeredSummary">0 de 0 metas respondidas</strong>
+                <span id="executionSummary">0% de execução</span>
+              </div>
+              <div class="toolbar-actions">
+                <button type="button" class="text-button" data-action="expand-all">
+                  <i data-lucide="chevrons-down"></i>
+                  Abrir categorias
+                </button>
+                <button type="button" class="text-button" data-action="collapse-all">
+                  <i data-lucide="chevrons-up"></i>
+                  Recolher
+                </button>
+              </div>
+            </div>
+
+            <div id="categoriesContainer" class="categories-container"></div>
+
+            <div class="answers-error" id="answersError" role="alert" aria-live="polite">
+              <i data-lucide="circle-alert"></i>
+              <span></span>
+            </div>
+
+            <div class="step-actions">
+              <button class="secondary-button" type="button" data-action="prev">
+                <i data-lucide="arrow-left"></i>
+                Anterior
+              </button>
+              <button class="primary-button" type="button" data-action="next">
+                Revisar envio
+                <i data-lucide="arrow-right"></i>
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <section class="form-step" data-step="3">
+          <div class="panel">
+            <div class="section-heading">
+              <div class="section-icon" aria-hidden="true">
+                <i data-lucide="send"></i>
+              </div>
+              <div>
+                <span class="eyebrow">Etapa 3</span>
+                <h2>Revisão e envio</h2>
+                <p>Confira o resumo do preenchimento antes de enviar o monitoramento.</p>
+              </div>
+            </div>
+
+            <div class="review-grid" id="reviewSummary"></div>
+
+            <div class="review-lists">
+              <article class="review-list-card">
+                <div class="review-list-head">
+                  <i data-lucide="check-circle-2"></i>
+                  <h3>Metas executadas</h3>
+                </div>
+                <ul id="executedList"></ul>
+              </article>
+
+              <article class="review-list-card">
+                <div class="review-list-head">
+                  <i data-lucide="x-circle"></i>
+                  <h3>Metas não executadas</h3>
+                </div>
+                <ul id="notExecutedList"></ul>
+              </article>
+
+            </div>
+
+            <div class="step-actions">
+              <button class="secondary-button" type="button" data-action="prev">
+                <i data-lucide="arrow-left"></i>
+                Anterior
+              </button>
+              <button class="primary-button" type="button" id="submitButton">
+                Enviar monitoramento
+                <i data-lucide="send"></i>
+              </button>
+            </div>
+          </div>
+        </section>
+      </form>
+
+      <footer class="creator-credit">
+        Criado por <strong>Alessandro Araujo</strong> <span>SEMASC Vigilância</span>
+      </footer>
+    </main>
+  </div>
+
+  <div class="toast" id="autosaveToast" role="status" aria-live="polite">
+    <i data-lucide="check"></i>
+    <span>Rascunho salvo automaticamente.</span>
+  </div>
+
+  <div class="modal-backdrop" id="successModal" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="successTitle">
+      <div class="modal-icon">
+        <i data-lucide="badge-check"></i>
+      </div>
+      <h2 id="successTitle">Monitoramento preparado</h2>
+      <p id="successMessage">Os dados do monitoramento foram processados.</p>
+      <button class="primary-button" type="button" data-action="close-modal">Entendi</button>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="tutorialModal" aria-hidden="true">
+    <div class="modal tutorial-modal" role="dialog" aria-modal="true" aria-labelledby="tutorialTitle">
+      <div class="modal-icon">
+        <i data-lucide="list-checks"></i>
+      </div>
+      <span class="eyebrow">Antes de começar</span>
+      <h2 id="tutorialTitle">Responda todas as metas</h2>
+      <p>Para concluir o monitoramento, cada meta deste eixo precisa receber uma resposta.</p>
+      <div class="tutorial-options">
+        <div><i data-lucide="check-circle-2"></i><span><strong>Sim</strong> quando a meta foi executada.</span></div>
+        <div><i data-lucide="x-circle"></i><span><strong>Não</strong> quando a meta ainda não foi executada.</span></div>
+      </div>
+      <button class="primary-button" type="button" data-action="close-tutorial">
+        Começar preenchimento
+        <i data-lucide="arrow-right"></i>
+      </button>
+    </div>
+  </div>
+</body>
+</html>

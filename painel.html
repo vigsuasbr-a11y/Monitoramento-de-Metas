@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Painel de Monitoramento do PMAS</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="painel.css">
+  <script defer src="config.js"></script>
+  <script defer src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <script defer src="painel.js"></script>
+</head>
+<body>
+  <section class="login-view" id="loginView">
+    <div class="login-brand">
+      <div class="login-brand-mark"><i data-lucide="scan-search"></i></div>
+      <span class="brand-label">SEMASC Belford Roxo</span>
+      <h1>Sistema de Vigilância Socioassistencial</h1>
+      <p>Monitoramento das metas do Plano Municipal de Assistência Social 2026-2029</p>
+      <div class="login-brand-detail">
+        <i data-lucide="shield-check"></i>
+        <span>Acesso administrativo</span>
+      </div>
+    </div>
+
+    <main class="login-main">
+      <form class="login-form" id="loginForm">
+        <div class="login-heading">
+          <span class="eyebrow">Painel de monitoramento</span>
+          <h2>Entrar no sistema</h2>
+          <p>Use as credenciais administrativas da Vigilância.</p>
+        </div>
+
+        <label class="login-field">
+          <span>Sistema</span>
+          <div class="input-control">
+            <i data-lucide="building-2"></i>
+            <select id="loginSystem" required>
+              <option value="Sistema de Vigilância">Sistema de Vigilância</option>
+            </select>
+          </div>
+        </label>
+
+        <label class="login-field">
+          <span>Senha</span>
+          <div class="input-control">
+            <i data-lucide="lock-keyhole"></i>
+            <input type="password" id="loginPassword" autocomplete="current-password" required placeholder="Digite sua senha">
+            <button class="icon-button password-toggle" type="button" id="passwordToggle" title="Mostrar senha" aria-label="Mostrar senha">
+              <i data-lucide="eye"></i>
+            </button>
+          </div>
+        </label>
+
+        <div class="login-error" id="loginError" role="alert"></div>
+
+        <button class="primary-action" type="submit" id="loginButton">
+          Entrar
+          <i data-lucide="arrow-right"></i>
+        </button>
+      </form>
+
+      <p class="auth-credit">Criado por <strong>Alessandro Araujo</strong> (SEMASC Vigilância)</p>
+    </main>
+  </section>
+
+  <div class="dashboard-app" id="dashboardApp" hidden>
+    <aside class="dashboard-sidebar">
+      <div class="dashboard-brand">
+        <span class="dashboard-brand-icon"><i data-lucide="bar-chart-3"></i></span>
+        <div>
+          <strong>PMAS</strong>
+          <small>Vigilância</small>
+        </div>
+      </div>
+
+      <nav class="dashboard-nav" aria-label="Navegação do painel">
+        <button type="button" class="nav-item is-active" data-axis-filter="">
+          <i data-lucide="layout-dashboard"></i>
+          Visão geral
+        </button>
+        <div class="nav-divider"></div>
+        <span class="nav-label">Eixos</span>
+        <div id="axisNavigation" class="axis-navigation"></div>
+      </nav>
+
+      <div class="sidebar-credit">
+        <span>Alessandro Araujo</span>
+        <small>SEMASC Vigilância</small>
+      </div>
+    </aside>
+
+    <main class="dashboard-main">
+      <header class="dashboard-header">
+        <div>
+          <span class="eyebrow">Plano Municipal de Assistência Social</span>
+          <h1>Monitoramento das metas</h1>
+          <p id="lastUpdate">Dados da planilha municipal</p>
+        </div>
+        <div class="header-actions">
+          <button class="icon-button" type="button" id="refreshButton" title="Atualizar dados" aria-label="Atualizar dados">
+            <i data-lucide="refresh-cw"></i>
+          </button>
+          <button class="logout-button" type="button" id="logoutButton">
+            <i data-lucide="log-out"></i>
+            Sair
+          </button>
+        </div>
+      </header>
+
+      <section class="dashboard-metrics" aria-label="Indicadores do monitoramento">
+        <article class="dashboard-metric">
+          <span class="metric-symbol metric-submissions"><i data-lucide="files"></i></span>
+          <div><small>Monitoramentos</small><strong id="metricSubmissions">0</strong></div>
+        </article>
+        <article class="dashboard-metric">
+          <span class="metric-symbol metric-executed"><i data-lucide="circle-check-big"></i></span>
+          <div><small>Metas executadas</small><strong id="metricYes">0</strong></div>
+        </article>
+        <article class="dashboard-metric">
+          <span class="metric-symbol metric-not-executed"><i data-lucide="circle-x"></i></span>
+          <div><small>Não executadas</small><strong id="metricNo">0</strong></div>
+        </article>
+        <article class="dashboard-metric">
+          <span class="metric-symbol metric-rate"><i data-lucide="gauge"></i></span>
+          <div><small>Execução geral</small><strong><span id="metricRate">0</span>%</strong></div>
+        </article>
+      </section>
+
+      <section class="responses-section">
+        <div class="section-title-row">
+          <div>
+            <h2>Respostas recebidas</h2>
+            <p id="resultCount">0 registros encontrados</p>
+          </div>
+          <button class="secondary-action" type="button" id="exportButton">
+            <i data-lucide="download"></i>
+            Exportar CSV
+          </button>
+        </div>
+
+        <div class="filters-bar">
+          <label class="filter-search">
+            <i data-lucide="search"></i>
+            <input type="search" id="searchFilter" placeholder="Buscar responsável ou setor">
+          </label>
+          <label class="filter-field">
+            <span>Eixo</span>
+            <select id="axisFilter"><option value="">Todos os eixos</option></select>
+          </label>
+          <label class="filter-field">
+            <span>De</span>
+            <input type="date" id="dateFromFilter">
+          </label>
+          <label class="filter-field">
+            <span>Até</span>
+            <input type="date" id="dateToFilter">
+          </label>
+          <button class="icon-button clear-filters" type="button" id="clearFiltersButton" title="Limpar filtros" aria-label="Limpar filtros">
+            <i data-lucide="filter-x"></i>
+          </button>
+        </div>
+
+        <div class="data-state" id="loadingState">
+          <i data-lucide="loader-circle"></i>
+          <span>Carregando respostas...</span>
+        </div>
+
+        <div class="table-wrap" id="tableWrap" hidden>
+          <table>
+            <thead>
+              <tr>
+                <th>Recebido em</th>
+                <th>Responsável</th>
+                <th>Setor/Unidade</th>
+                <th>Eixo</th>
+                <th>Sim</th>
+                <th>Não</th>
+                <th>Execução</th>
+                <th><span class="sr-only">Ações</span></th>
+              </tr>
+            </thead>
+            <tbody id="responsesTableBody"></tbody>
+          </table>
+        </div>
+
+        <div class="data-state" id="emptyState" hidden>
+          <i data-lucide="inbox"></i>
+          <strong>Nenhuma resposta encontrada</strong>
+          <span>Altere os filtros para consultar outros registros.</span>
+        </div>
+
+        <div class="pagination" id="pagination" hidden>
+          <button class="icon-button" type="button" id="previousPage" title="Página anterior" aria-label="Página anterior"><i data-lucide="chevron-left"></i></button>
+          <span id="pageInfo">Página 1 de 1</span>
+          <button class="icon-button" type="button" id="nextPage" title="Próxima página" aria-label="Próxima página"><i data-lucide="chevron-right"></i></button>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div class="detail-backdrop" id="detailModal" aria-hidden="true">
+    <section class="detail-panel" role="dialog" aria-modal="true" aria-labelledby="detailTitle">
+      <header class="detail-header">
+        <div>
+          <span class="eyebrow">Detalhes do monitoramento</span>
+          <h2 id="detailTitle">Resposta</h2>
+        </div>
+        <button class="icon-button" type="button" id="closeDetailButton" title="Fechar" aria-label="Fechar"><i data-lucide="x"></i></button>
+      </header>
+      <div id="detailContent" class="detail-content"></div>
+    </section>
+  </div>
+</body>
+</html>
