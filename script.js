@@ -249,6 +249,7 @@ const allMetas = categories.flatMap((category) =>
 const initialState = {
   currentStep: 1,
   tutorialShown: false,
+  inclusaoMetasPorEixo: {},
   identificacao: {
     nome: "",
     cargo: "",
@@ -276,6 +277,7 @@ document.addEventListener("DOMContentLoaded", () => {
   renderCategories();
   bindFormFields();
   bindActions();
+  bindAdditionalGoals();
   renderAll();
   refreshIcons();
 });
@@ -298,6 +300,16 @@ function loadState() {
     const merged = structuredCloneSafe(initialState);
     merged.currentStep = stored.currentStep || 1;
     merged.tutorialShown = Boolean(stored.tutorialShown);
+    if (stored.inclusaoMetasPorEixo && typeof stored.inclusaoMetasPorEixo === "object") {
+      for (const [axis, goals] of Object.entries(stored.inclusaoMetasPorEixo)) {
+        if (!Array.isArray(goals)) continue;
+        const normalizedAxis = axis === LEGACY_COMSEA_AXIS ? COMSEA_AXIS : axis;
+        const cleanGoals = goals.filter((goal) => typeof goal === "string")
+          .map((goal) => goal.trim().slice(0, 1000)).filter(Boolean);
+        merged.inclusaoMetasPorEixo[normalizedAxis] = cleanGoals.filter((goal, index) =>
+          cleanGoals.findIndex((item) => normalizeGoalText(item) === normalizeGoalText(goal)) === index);
+      }
+    }
     merged.identificacao = { ...merged.identificacao, ...(stored.identificacao || {}) };
     if (merged.identificacao.eixo === LEGACY_COMSEA_AXIS) {
       merged.identificacao.eixo = COMSEA_AXIS;
@@ -412,6 +424,76 @@ function handleAxisChange() {
   refreshIcons();
 }
 
+function normalizeGoalText(value) {
+  return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/\s+/g, " ").trim();
+}
+
+function getAdditionalGoals() {
+  return state.inclusaoMetasPorEixo[state.identificacao.eixo] || [];
+}
+
+function bindAdditionalGoals() {
+  const input = document.getElementById("additionalGoalInput");
+  document.getElementById("addGoalButton").addEventListener("click", () => addAdditionalGoal());
+  input.addEventListener("keydown", (event) => {
+    if (event.key === "Enter" && !event.isComposing) {
+      event.preventDefault();
+      addAdditionalGoal();
+    }
+  });
+  input.addEventListener("change", () => addAdditionalGoal(false));
+  document.getElementById("additionalGoalsTags").addEventListener("click", (event) => {
+    const button = event.target.closest("[data-remove-goal]");
+    if (!button) return;
+    const goals = [...getAdditionalGoals()];
+    const index = Number(button.dataset.removeGoal);
+    if (!Number.isInteger(index) || index < 0 || index >= goals.length) return;
+    goals.splice(index, 1);
+    state.inclusaoMetasPorEixo[state.identificacao.eixo] = goals;
+    saveState();
+    renderAdditionalGoals();
+    renderReview();
+    document.getElementById("additionalGoalsStatus").textContent = "Meta removida.";
+    input.focus();
+  });
+}
+
+function addAdditionalGoal(focusInput = true) {
+  const input = document.getElementById("additionalGoalInput");
+  const value = input.value.trim().slice(0, 1000);
+  if (!value || !state.identificacao.eixo) return;
+  const goals = getAdditionalGoals();
+  const duplicate = goals.some((goal) => normalizeGoalText(goal) === normalizeGoalText(value));
+  if (!duplicate) {
+    state.inclusaoMetasPorEixo[state.identificacao.eixo] = [...goals, value];
+    saveState();
+  }
+  input.value = "";
+  renderAdditionalGoals();
+  renderReview();
+  document.getElementById("additionalGoalsStatus").textContent = duplicate
+    ? "Esta meta já foi incluída neste eixo."
+    : "Meta incluída. Você pode adicionar outra.";
+  if (focusInput) input.focus();
+}
+
+function renderAdditionalGoals() {
+  const input = document.getElementById("additionalGoalInput");
+  const goals = getAdditionalGoals();
+  input.disabled = !state.identificacao.eixo;
+  document.getElementById("addGoalButton").disabled = input.disabled;
+  document.getElementById("additionalGoalsTags").innerHTML = goals.map((goal, index) => `
+    <li class="additional-goal-tag"><span>${escapeHTML(goal)}</span><button type="button" data-remove-goal="${index}" aria-label="${escapeHTML(`Remover meta: ${goal}`)}">×</button></li>
+  `).join("");
+  const suggestions = [...new Set(Object.values(state.inclusaoMetasPorEixo).flat())]
+    .filter((goal) => !goals.some((selected) => normalizeGoalText(selected) === normalizeGoalText(goal)));
+  document.getElementById("additionalGoalSuggestions").innerHTML = suggestions
+    .map((goal) => `<option value="${escapeHTML(goal)}"></option>`).join("");
+  document.getElementById("additionalGoalsStatus").textContent = input.disabled
+    ? "Selecione um eixo na identificação para incluir metas."
+    : `${goals.length} ${goals.length === 1 ? "meta incluída" : "metas incluídas"} neste eixo.`;
+}
+
 function getActiveMetas() {
   const selectedAxis = state.identificacao.eixo;
   if (!selectedAxis) return [];
@@ -431,6 +513,9 @@ function getVisibleCategories() {
 }
 
 function renderCategories() {
+  const input = document.getElementById("additionalGoalInput");
+  input.value = "";
+  renderAdditionalGoals();
   const container = document.getElementById("categoriesContainer");
   const visibleCategories = getVisibleCategories();
 
@@ -633,6 +718,7 @@ function setActiveStep(step) {
 
 function goToStep(step) {
   const currentStep = state.currentStep;
+  if (currentStep === 2) addAdditionalGoal(false);
   const movingForward = step > currentStep;
 
   if (movingForward && currentStep === 1 && !validateIdentification()) {
@@ -748,6 +834,10 @@ function renderReview() {
 
   renderReviewList("executedList", "sim");
   renderReviewList("notExecutedList", "nao");
+  const goals = getAdditionalGoals();
+  document.getElementById("additionalGoalsReview").innerHTML = goals.length
+    ? goals.map((goal) => `<li>${escapeHTML(goal)}</li>`).join("")
+    : '<li class="empty-state">Nenhuma meta adicional incluída.</li>';
 }
 
 function reviewCard(label, value) {
@@ -785,6 +875,7 @@ function buildPayload() {
       eixo: state.identificacao.eixo
     },
     totais: stats,
+    inclusaoMetas: [...getAdditionalGoals()],
     metas: getActiveMetas().map((item) => {
       const saved = ensureMetaState(item.id);
       return {
@@ -799,6 +890,7 @@ function buildPayload() {
 }
 
 async function enviarFormulario() {
+  addAdditionalGoal(false);
   if (!validateIdentification()) {
     setActiveStep(1);
     return;

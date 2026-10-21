@@ -8,6 +8,9 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="tema.css">
+  <link rel="stylesheet" href="onboarding.css">
+  <script defer src="onboarding.js"></script>
   <script defer src="config.js"></script>
   <script defer src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
   <script defer src="script.js"></script>
@@ -83,6 +86,7 @@
     <main class="workspace">
       <header class="topbar">
         <div class="title-block">
+          <img class="prefeitura-logo" src="assets/prefeitura-logo-azul.png" width="1564" height="724" alt="Prefeitura de Belford Roxo">
           <span class="eyebrow">Prefeitura Municipal de Belford Roxo</span>
           <h1>Monitoramento das Metas do Plano Municipal de Assistência Social 2026-2029</h1>
           <p>
@@ -248,6 +252,25 @@
 
             <div id="categoriesContainer" class="categories-container"></div>
 
+            <section class="additional-goals" aria-labelledby="additionalGoalsTitle">
+              <div class="additional-goals-heading">
+                <span class="section-icon" aria-hidden="true"><i data-lucide="list-plus"></i></span>
+                <div>
+                  <h3 id="additionalGoalsTitle">Inclusão de Metas Concluídas</h3>
+                  <p>Sentiu falta de alguma meta neste eixo? Inclua abaixo as metas que ainda não aparecem na lista. Este campo é opcional.</p>
+                </div>
+              </div>
+              <label class="additional-goals-label" for="additionalGoalInput">Qual meta você deseja incluir?</label>
+              <div class="additional-goals-entry">
+                <input type="text" id="additionalGoalInput" list="additionalGoalSuggestions" maxlength="1000" placeholder="Ex.: Ampliar as ações de busca ativa no território" aria-describedby="additionalGoalsHelp additionalGoalsStatus" autocomplete="off">
+                <datalist id="additionalGoalSuggestions"></datalist>
+                <button type="button" class="secondary-button" id="addGoalButton"><i data-lucide="plus"></i> Adicionar meta</button>
+              </div>
+              <p class="additional-goals-help" id="additionalGoalsHelp">Digite uma meta e pressione Enter ou clique em “Adicionar meta”. Repita para incluir quantas precisar. Sugestões aparecem conforme você digita metas já incluídas em outros eixos.</p>
+              <ul class="additional-goals-tags" id="additionalGoalsTags" aria-label="Metas incluídas"></ul>
+              <p class="additional-goals-status" id="additionalGoalsStatus" role="status" aria-live="polite"></p>
+            </section>
+
             <div class="answers-error" id="answersError" role="alert" aria-live="polite">
               <i data-lucide="circle-alert"></i>
               <span></span>
@@ -298,6 +321,14 @@
                 <ul id="notExecutedList"></ul>
               </article>
 
+              <article class="review-list-card additional-goals-review">
+                <div class="review-list-head">
+                  <i data-lucide="list-plus"></i>
+                  <h3>Inclusão de Metas Concluídas</h3>
+                </div>
+                <ul id="additionalGoalsReview"></ul>
+              </article>
+
             </div>
 
             <div class="step-actions">
@@ -315,6 +346,7 @@
       </form>
 
       <footer class="creator-credit">
+        <button type="button" class="pmas-about-button" id="pmasAboutButton">Conheça o PMAS</button>
         Criado por <strong>Alessandro Araujo</strong> <span>SEMASC Vigilância</span>
       </footer>
     </main>
