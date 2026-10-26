@@ -8,16 +8,15 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="painel.css">
-  <link rel="stylesheet" href="tema.css">
   <script defer src="config.js"></script>
-  <script defer src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <script defer src="https://unpkg.com/lucide@1.61.0/dist/umd/lucide.min.js"></script>
   <script defer src="painel.js"></script>
 </head>
-<body>
+<body class="panel-ui">
   <section class="login-view" id="loginView">
     <div class="login-brand">
-      <div class="login-brand-mark"><i data-lucide="scan-search"></i></div>
-      <span class="brand-label">SEMASC Belford Roxo</span>
+      <div class="login-brand-mark"><img src="assets/prefeitura-logo-branca.png" width="1837" height="856" alt="Prefeitura de Belford Roxo"></div>
+      <span class="brand-label">SEMASC · Belford Roxo</span>
       <h1>Sistema de Vigilância Socioassistencial</h1>
       <p>Monitoramento das metas do Plano Municipal de Assistência Social 2026-2029</p>
       <div class="login-brand-detail">
@@ -27,10 +26,10 @@
     </div>
 
     <main class="login-main">
-      <form class="login-form" id="loginForm">
+      <form class="login-form" id="loginForm" aria-labelledby="loginTitle">
         <div class="login-heading">
           <span class="eyebrow">Painel de monitoramento</span>
-          <h2>Entrar no sistema</h2>
+          <h2 id="loginTitle">Acesse o monitoramento</h2>
           <p>Use as credenciais administrativas da Vigilância.</p>
         </div>
 
@@ -44,18 +43,18 @@
           </div>
         </label>
 
-        <label class="login-field">
+        <label class="login-field" id="passwordField">
           <span>Senha</span>
           <div class="input-control">
             <i data-lucide="lock-keyhole"></i>
-            <input type="password" id="loginPassword" autocomplete="current-password" required placeholder="Digite sua senha">
-            <button class="icon-button password-toggle" type="button" id="passwordToggle" title="Mostrar senha" aria-label="Mostrar senha">
+            <input type="password" id="loginPassword" autocomplete="current-password" required placeholder="Digite sua senha" aria-describedby="loginError" aria-invalid="false">
+            <button class="icon-button password-toggle" type="button" id="passwordToggle" title="Mostrar senha" aria-label="Mostrar senha" aria-pressed="false">
               <i data-lucide="eye"></i>
             </button>
           </div>
         </label>
 
-        <div class="login-error" id="loginError" role="alert"></div>
+        <div class="login-error" id="loginError" role="alert" aria-atomic="true"></div>
 
         <button class="primary-action" type="submit" id="loginButton">
           Entrar
@@ -76,6 +75,7 @@
           <small>Vigilância</small>
         </div>
       </div>
+      <p class="sidebar-period">Plano Municipal <span>2026–2029</span></p>
 
       <nav class="dashboard-nav" aria-label="Navegação do painel">
         <button type="button" class="nav-item is-active" data-axis-filter="">
@@ -111,26 +111,26 @@
         </div>
       </header>
 
-      <section class="dashboard-metrics" aria-label="Indicadores do monitoramento">
+      <section class="dashboard-metrics" id="metricsOverview" aria-label="Indicadores do monitoramento">
         <article class="dashboard-metric">
           <span class="metric-symbol metric-submissions"><i data-lucide="files"></i></span>
-          <div><small>Monitoramentos</small><strong id="metricSubmissions">0</strong></div>
+          <div class="metric-content"><small title="Monitoramentos recebidos">Monitoramentos</small><div class="metric-value"><strong id="metricSubmissions">0</strong></div><span class="metric-note">No período selecionado</span></div>
         </article>
         <article class="dashboard-metric">
           <span class="metric-symbol metric-executed"><i data-lucide="circle-check-big"></i></span>
-          <div><small>Metas executadas</small><strong id="metricYes">0</strong></div>
+          <div class="metric-content"><small title="Metas executadas">Executadas</small><div class="metric-value"><strong id="metricYes">0</strong></div><span class="metric-note">Metas originais</span></div>
         </article>
         <article class="dashboard-metric">
           <span class="metric-symbol metric-not-executed"><i data-lucide="circle-x"></i></span>
-          <div><small>Não executadas</small><strong id="metricNo">0</strong></div>
+          <div class="metric-content"><small title="Metas não executadas">Não executadas</small><div class="metric-value"><strong id="metricNo">0</strong></div><span class="metric-note">Metas originais</span></div>
         </article>
         <article class="dashboard-metric">
           <span class="metric-symbol metric-rate"><i data-lucide="gauge"></i></span>
-          <div><small>Execução geral</small><strong><span id="metricRate">0</span>%</strong></div>
+          <div class="metric-content"><small title="Execução geral das metas originais">Execução geral</small><div class="metric-value"><strong><span id="metricRate">0</span><span class="metric-unit">%</span></strong></div><span class="metric-note">Metas originais</span></div>
         </article>
         <article class="dashboard-metric">
           <span class="metric-symbol metric-included"><i data-lucide="list-plus"></i></span>
-          <div><small>Metas concluídas incluídas</small><strong id="metricIncluded">0</strong></div>
+          <div class="metric-content"><small title="Inclusão de Metas Concluídas — contabilizadas separadamente">Metas incluídas</small><div class="metric-value"><strong id="metricIncluded">0</strong></div><span class="metric-note">Concluídas pelos setores</span></div>
         </article>
       </section>
 
@@ -148,8 +148,9 @@
 
         <div class="filters-bar">
           <label class="filter-search">
+            <span class="filter-caption">Responsável ou setor</span>
             <i data-lucide="search"></i>
-            <input type="search" id="searchFilter" placeholder="Buscar responsável ou setor">
+            <input type="search" id="searchFilter" placeholder="Buscar responsável ou setor" aria-label="Buscar responsável ou setor" aria-controls="responsesTableBody">
           </label>
           <label class="filter-field">
             <span>Eixo</span>
@@ -165,6 +166,7 @@
           </label>
           <button class="icon-button clear-filters" type="button" id="clearFiltersButton" title="Limpar filtros" aria-label="Limpar filtros">
             <i data-lucide="filter-x"></i>
+            <span>Limpar filtros</span>
           </button>
         </div>
 
@@ -173,8 +175,9 @@
           <span>Carregando respostas...</span>
         </div>
 
-        <div class="table-wrap" id="tableWrap" hidden>
+        <div class="table-wrap" id="tableWrap" role="region" aria-label="Respostas recebidas — tabela com rolagem horizontal" tabindex="0" hidden>
           <table>
+            <caption class="sr-only">Monitoramentos recebidos de acordo com os filtros selecionados</caption>
             <thead>
               <tr>
                 <th>Recebido em</th>
@@ -193,9 +196,10 @@
         </div>
 
         <div class="data-state" id="emptyState" hidden>
-          <i data-lucide="inbox"></i>
-          <strong>Nenhuma resposta encontrada</strong>
-          <span>Altere os filtros para consultar outros registros.</span>
+          <svg class="empty-illustration" width="112" height="88" viewBox="0 0 112 88" fill="none" aria-hidden="true"><circle cx="56" cy="44" r="39" fill="var(--ui-info-soft)"/><rect x="31" y="17" width="45" height="55" rx="8" fill="var(--ui-surface)" stroke="var(--ui-border-strong)"/><path d="M41 30h25M41 39h18M41 48h12" stroke="var(--ui-blue)" stroke-width="2.5" stroke-linecap="round"/><circle cx="76" cy="59" r="13" fill="var(--ui-surface)" stroke="var(--ui-blue)" stroke-width="2"/><path d="m85 69 8 8" stroke="var(--ui-blue)" stroke-width="3" stroke-linecap="round"/><circle cx="25" cy="56" r="3" fill="var(--ui-gold)"/><circle cx="87" cy="22" r="2" fill="var(--ui-blue)"/></svg>
+          <strong id="emptyStateTitle">Seu acompanhamento começa aqui</strong>
+          <span id="emptyStateText">Os monitoramentos recebidos aparecerão nesta área, organizados por eixo e setor.</span>
+          <button class="secondary-action" type="button" id="emptyClearFilters" hidden><i data-lucide="filter-x"></i>Limpar filtros</button>
         </div>
 
         <div class="pagination" id="pagination" hidden>
@@ -208,7 +212,7 @@
   </div>
 
   <div class="detail-backdrop" id="detailModal" aria-hidden="true">
-    <section class="detail-panel" role="dialog" aria-modal="true" aria-labelledby="detailTitle">
+    <section class="detail-panel" id="detailPanel" role="dialog" aria-modal="true" aria-labelledby="detailTitle" tabindex="-1">
       <header class="detail-header">
         <div>
           <span class="eyebrow">Detalhes do monitoramento</span>

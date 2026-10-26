@@ -7,7 +7,12 @@ const root = require('node:path').join(__dirname, '..');
 function load(file) {
   const nodes = new Map(), storage = new Map(), alerts = [];
   const node = id => {
-    if (!nodes.has(id)) nodes.set(id, { value: '', textContent: '', innerHTML: '', style: {}, classList: { add() {}, remove() {} }, setAttribute() {} });
+    if (!nodes.has(id)) {
+      const classes = new Set();
+      nodes.set(id, { value: '', textContent: '', innerHTML: '', style: {}, dataset: {}, attributes: {}, type: 'password',
+        classList: { add(name) { classes.add(name); }, remove(name) { classes.delete(name); }, toggle(name, on) { on ? classes.add(name) : classes.delete(name); }, contains(name) { return classes.has(name); } },
+        setAttribute(name, value) { this.attributes[name] = value; }, querySelectorAll() { return []; }, focus() {} });
+    }
     return nodes.get(id);
   };
   const context = { console: { warn() {}, error() {}, log() {} }, URL, Blob, Date, Event,
@@ -98,4 +103,41 @@ test('referências fixas de elementos JavaScript existem no HTML', () => {
     assert.equal(ids.length, new Set(ids).size);
     assert.deepEqual([...new Set(references.filter(id => !ids.includes(id)))], []);
   }
+});
+
+test('rótulos de eixos são formatados sem modificar os valores dos dados', () => {
+  const a = load('painel.js');
+  for (const [value, label] of [['ORGÃO GESTOR', 'Órgão Gestor'], ['GESTÃO SUAS', 'Gestão SUAS'], ['FUNDO MUNICIPAL', 'Fundo Municipal'], ['PROTEÇÃO SOCIAL BÁSICA (PSB)', 'Proteção Social Básica'], ['SEGURANÇA ALIMENTAR', 'Segurança Alimentar'], ['COMPLEXO DA CIDADANIA', 'Complexo da Cidadania']]) {
+    assert.equal(a.context.shortAxis(value), label);
+  }
+  a.run(`dashboardState.axes=['ORGÃO GESTOR']; populateAxes();`);
+  assert(a.nodes.get('axisFilter').innerHTML.includes('value="ORGÃO GESTOR">Órgão Gestor'));
+  assert(a.nodes.get('axisNavigation').innerHTML.includes('data-axis-filter="ORGÃO GESTOR"'));
+});
+
+test('estado sem dados usa traços; registro com contagem zero continua exibindo zero', () => {
+  const a = load('painel.js'); a.run('renderMetrics(); renderEmptyState();');
+  assert.equal(a.nodes.get('metricSubmissions').textContent, '—');
+  assert.equal(a.nodes.get('metricRate').textContent, '—');
+  assert.equal(a.nodes.get('emptyClearFilters').hidden, true);
+  a.nodes.get('searchFilter').value = 'Busca sem resultado'; a.run('renderEmptyState()');
+  assert.equal(a.nodes.get('emptyClearFilters').hidden, false);
+  assert.equal(a.nodes.get('emptyStateTitle').textContent, 'Nenhum resultado para estes filtros');
+  a.run('dashboardState.filtered=[{sim:0,nao:1}];renderMetrics()');
+  assert.equal(a.nodes.get('metricYes').textContent, 0);
+  assert.equal(a.nodes.get('metricRate').textContent, 0);
+});
+
+test('loading e erro de acesso têm estados acessíveis sem trocar a autenticação', () => {
+  const a = load('painel.js');
+  a.run(`setButtonLoading(document.getElementById('loginButton'),true,'Validando...');setLoginError('Senha inválida');`);
+  assert.equal(a.nodes.get('loginButton').disabled, true);
+  assert.equal(a.nodes.get('loginButton').attributes['aria-busy'], 'true');
+  assert.equal(a.nodes.get('loginButton').classList.contains('is-loading'), true);
+  assert.equal(a.nodes.get('loginPassword').attributes['aria-invalid'], 'true');
+  a.run('togglePassword()');
+  assert.equal(a.nodes.get('passwordToggle').attributes['aria-pressed'], 'true');
+  a.run('togglePassword();setLoginError("");');
+  assert.equal(a.nodes.get('passwordToggle').attributes['aria-pressed'], 'false');
+  assert.equal(a.nodes.get('loginPassword').attributes['aria-invalid'], 'false');
 });

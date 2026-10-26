@@ -1,6 +1,7 @@
 const APPS_SCRIPT_WEB_APP_URL = window.PMAS_CONFIG?.appsScriptUrl || "";
 const SESSION_KEY = "pmas-vigilancia-session";
 const PAGE_SIZE = 10;
+let detailReturnFocus = null;
 
 const dashboardState = {
   credentials: null,
@@ -22,6 +23,8 @@ function bindDashboardEvents() {
   document.getElementById("logoutButton").addEventListener("click", logout);
   document.getElementById("refreshButton").addEventListener("click", refreshDashboard);
   document.getElementById("clearFiltersButton").addEventListener("click", clearFilters);
+  document.getElementById("emptyClearFilters").addEventListener("click", clearFilters);
+  document.getElementById("loginPassword").addEventListener("input", () => setLoginError(""));
   document.getElementById("exportButton").addEventListener("click", exportCsv);
   document.getElementById("closeDetailButton").addEventListener("click", closeDetails);
   document.getElementById("previousPage").addEventListener("click", () => changePage(-1));
@@ -45,6 +48,19 @@ function bindDashboardEvents() {
 
   document.getElementById("detailModal").addEventListener("click", (event) => {
     if (event.target.id === "detailModal") closeDetails();
+  });
+  document.getElementById("detailModal").addEventListener("keydown", (event) => {
+    if (event.key === "Escape") { event.preventDefault(); closeDetails(); }
+    if (event.key === "Tab") {
+      const controls = [...document.getElementById("detailPanel").querySelectorAll('button:not(:disabled), a[href], input:not(:disabled), [tabindex="0"]')];
+      const first = controls[0], last = controls[controls.length - 1];
+      if (!first) { event.preventDefault(); return; }
+      if (event.shiftKey && (document.activeElement === first || document.activeElement === document.getElementById("detailPanel"))) {
+        event.preventDefault(); last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault(); first.focus();
+      }
+    }
   });
 }
 
@@ -148,13 +164,13 @@ function populateAxes() {
   const select = document.getElementById("axisFilter");
   const current = select.value;
   select.innerHTML = `<option value="">Todos os eixos</option>${dashboardState.axes
-    .map((axis) => `<option value="${escapeHTML(axis)}">${escapeHTML(axis)}</option>`)
+    .map((axis) => `<option value="${escapeHTML(axis)}">${escapeHTML(shortAxis(axis))}</option>`)
     .join("")}`;
   select.value = dashboardState.axes.includes(current) ? current : "";
 
   document.getElementById("axisNavigation").innerHTML = dashboardState.axes
     .map((axis) => `
-      <button type="button" class="nav-item" data-axis-filter="${escapeHTML(axis)}" title="${escapeHTML(axis)}">
+      <button type="button" class="nav-item" data-axis-filter="${escapeHTML(axis)}" title="${escapeHTML(shortAxis(axis))}">
         <i data-lucide="chevron-right"></i>
         <span>${escapeHTML(shortAxis(axis))}</span>
       </button>
@@ -186,6 +202,7 @@ function renderDashboard() {
   renderTable();
   renderNavigationState();
   document.getElementById("resultCount").textContent = `${dashboardState.filtered.length} ${dashboardState.filtered.length === 1 ? "registro encontrado" : "registros encontrados"}`;
+  renderEmptyState();
   refreshIcons();
 }
 
@@ -193,11 +210,29 @@ function renderMetrics() {
   const totalYes = dashboardState.filtered.reduce((sum, item) => sum + Number(item.sim || 0), 0);
   const totalNo = dashboardState.filtered.reduce((sum, item) => sum + Number(item.nao || 0), 0);
   const rate = totalYes + totalNo ? Math.round((totalYes / (totalYes + totalNo)) * 100) : 0;
-  setText("metricSubmissions", dashboardState.filtered.length);
-  setText("metricYes", totalYes);
-  setText("metricNo", totalNo);
-  setText("metricRate", rate);
-  setText("metricIncluded", dashboardState.filtered.reduce((sum, item) => sum + getIncludedGoals(item).length, 0));
+  const hasData = dashboardState.filtered.length > 0;
+  setText("metricSubmissions", hasData ? dashboardState.filtered.length : "—");
+  setText("metricYes", hasData ? totalYes : "—");
+  setText("metricNo", hasData ? totalNo : "—");
+  setText("metricRate", hasData ? rate : "—");
+  setText("metricIncluded", hasData ? dashboardState.filtered.reduce((sum, item) => sum + getIncludedGoals(item).length, 0) : "—");
+  const metrics = document.getElementById("metricsOverview");
+  metrics.classList.toggle("is-empty", !hasData);
+  metrics.querySelectorAll(".metric-note").forEach((note) => {
+    if (!note.dataset.originalNote) note.dataset.originalNote = note.textContent;
+    note.textContent = hasData ? note.dataset.originalNote : "Sem dados no período";
+    note.title = note.textContent;
+  });
+}
+
+function renderEmptyState() {
+  const filtered = ["searchFilter", "axisFilter", "dateFromFilter", "dateToFilter"]
+    .some((id) => document.getElementById(id).value.trim());
+  setText("emptyStateTitle", filtered ? "Nenhum resultado para estes filtros" : "Seu acompanhamento começa aqui");
+  setText("emptyStateText", filtered
+    ? "Tente outro período, eixo ou responsável. Você também pode limpar os filtros para ver todos os monitoramentos."
+    : "Os monitoramentos recebidos aparecerão nesta área, organizados por eixo e setor.");
+  document.getElementById("emptyClearFilters").hidden = !filtered;
 }
 
 function getIncludedGoals(submission) {
@@ -218,7 +253,7 @@ function renderTable() {
       <td>${escapeHTML(formatDateTime(item.recebidoEm))}</td>
       <td class="person-cell"><strong>${escapeHTML(item.nome || "Não informado")}</strong><small>${escapeHTML(item.cargo || "")}</small></td>
       <td>${escapeHTML(item.setor || "Não informado")}</td>
-      <td><span class="axis-badge">${escapeHTML(item.eixo || "")}</span></td>
+      <td><span class="axis-badge" title="${escapeHTML(shortAxis(item.eixo || ""))}">${escapeHTML(shortAxis(item.eixo || ""))}</span></td>
       <td class="number-yes">${Number(item.sim || 0)}</td>
       <td class="number-no">${Number(item.nao || 0)}</td>
       <td class="number-included">${getIncludedGoals(item).length}</td>
@@ -243,6 +278,7 @@ function renderNavigationState() {
   const selectedAxis = document.getElementById("axisFilter").value;
   document.querySelectorAll("[data-axis-filter]").forEach((button) => {
     button.classList.toggle("is-active", button.dataset.axisFilter === selectedAxis);
+    button.setAttribute("aria-current", button.dataset.axisFilter === selectedAxis ? "page" : "false");
   });
 }
 
@@ -258,7 +294,7 @@ function openDetails(id) {
       ${detailItem("Responsável", submission.nome)}
       ${detailItem("Cargo", submission.cargo)}
       ${detailItem("Setor/Unidade", submission.setor)}
-      ${detailItem("Eixo", submission.eixo)}
+      ${detailItem("Eixo", shortAxis(submission.eixo))}
       ${detailItem("Data de preenchimento", formatDate(submission.dataPreenchimento))}
       ${detailItem("Recebido em", formatDateTime(submission.recebidoEm))}
       ${detailItem("Telefone", submission.telefone)}
@@ -274,8 +310,11 @@ function openDetails(id) {
   `;
 
   const modal = document.getElementById("detailModal");
+  detailReturnFocus = document.activeElement;
   modal.classList.add("is-visible");
   modal.setAttribute("aria-hidden", "false");
+  document.getElementById("dashboardApp").inert = true;
+  document.getElementById("detailPanel").focus();
   refreshIcons();
 }
 
@@ -283,6 +322,8 @@ function closeDetails() {
   const modal = document.getElementById("detailModal");
   modal.classList.remove("is-visible");
   modal.setAttribute("aria-hidden", "true");
+  document.getElementById("dashboardApp").inert = false;
+  if (detailReturnFocus?.isConnected) detailReturnFocus.focus();
 }
 
 function detailItem(label, value) {
@@ -339,6 +380,7 @@ function togglePassword() {
   input.type = showing ? "password" : "text";
   button.title = showing ? "Mostrar senha" : "Ocultar senha";
   button.setAttribute("aria-label", button.title);
+  button.setAttribute("aria-pressed", String(!showing));
   button.innerHTML = `<i data-lucide="${showing ? "eye" : "eye-off"}"></i>`;
   refreshIcons();
 }
@@ -354,12 +396,16 @@ function setLoading(loading) {
 
 function setButtonLoading(button, loading, label) {
   button.disabled = loading;
+  button.classList.toggle("is-loading", loading);
+  button.setAttribute("aria-busy", String(loading));
   button.innerHTML = `${escapeHTML(label)} <i data-lucide="${loading ? "loader-circle" : "arrow-right"}"></i>`;
   refreshIcons();
 }
 
 function setLoginError(message) {
   setText("loginError", message);
+  document.getElementById("loginPassword").setAttribute("aria-invalid", String(Boolean(message)));
+  document.getElementById("passwordField").classList.toggle("is-invalid", Boolean(message));
 }
 
 function setText(id, value) {
@@ -373,12 +419,19 @@ function normalizeText(value) {
 
 function shortAxis(axis) {
   const names = {
+    "ORGÃO GESTOR": "Órgão Gestor",
+    "ORGÃO GESTOR (GABINETE)": "Órgão Gestor",
+    "ÓRGÃO GESTOR": "Órgão Gestor",
+    "GESTÃO SUAS": "Gestão SUAS",
+    "FUNDO MUNICIPAL": "Fundo Municipal",
+    "SEGURANÇA ALIMENTAR": "Segurança Alimentar",
+    "COMPLEXO DA CIDADANIA": "Complexo da Cidadania",
     "PROTEÇÃO SOCIAL BÁSICA (PSB)": "Proteção Social Básica",
     "PROTEÇÃO SOCIAL ESPECIAL (PSE)": "Proteção Social Especial",
     "CONSELHO MUNICIPAL DE ASSISTÊNCIA SOCIAL (CMAS)": "CMAS",
     "CONSELHO MUNICIPAL DE SEGURANÇA ALIMENTAR E NUTRICIONAL (COMSEA)": "COMSEA"
   };
-  return names[axis] || axis;
+  return names[axis] || axis || "Não informado";
 }
 
 function formatDateTime(value) {

@@ -17,8 +17,8 @@
         <div class="ob-seal-stage"><div class="ob-seal-tilt"><div class="ob-seal"><span>PLANO MUNICIPAL DE</span><span>ASSISTÊNCIA SOCIAL</span><strong>PMAS</strong><b>2026–2029</b><i></i><small>Planejar. Acompanhar. Fortalecer.</small></div></div></div>
         <div class="ob-orbit-icon ob-orbit-icon-top"><svg viewBox="0 0 32 32"><path d="M10 5H6v23h20V5h-4M12 3h8v5h-8zM11 14h10M11 19h10M11 24h6"/></svg></div>
         <div class="ob-orbit-icon ob-orbit-icon-right"><svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="12"/><circle cx="16" cy="16" r="7"/><path d="m16 16 10-10M22 5h5v5"/></svg></div>
-        <div class="ob-floating ob-floating-top">↗ <span>Planejamento</span></div>
-        <div class="ob-floating ob-floating-bottom">◎ <span>Compromisso coletivo</span></div>
+        <div class="ob-floating ob-floating-top"><svg viewBox="0 0 24 24"><path d="m5 19 14-14M6 5h13v13"/></svg><span>Planejamento</span></div>
+        <div class="ob-floating ob-floating-bottom"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/></svg><span>Compromisso coletivo</span></div>
       </div>`
     },
     {
@@ -100,7 +100,12 @@
     let fitFrame = null;
 
     function fitComposition() {
-      if (!dialog.open || !content.clientHeight || !composition.offsetHeight) return;
+      if (!dialog.open) return;
+      // A área visível muda com as barras do Safari e com a orientação do celular.
+      const viewport = window.visualViewport;
+      dialog.style.setProperty("--ob-viewport-height", `${viewport?.height || window.innerHeight}px`);
+      dialog.style.setProperty("--ob-viewport-top", `${viewport?.offsetTop || 0}px`);
+      if (!content.clientHeight || !composition.offsetHeight) return;
       const fit = Math.min(1, (content.clientHeight - 4) / composition.offsetHeight);
       composition.style.setProperty("--ob-fit", String(Math.max(.1, fit)));
     }
@@ -116,6 +121,8 @@
       fitObserver.observe(composition);
     }
     window.addEventListener("resize", scheduleFit);
+    window.visualViewport?.addEventListener("resize", scheduleFit);
+    window.visualViewport?.addEventListener("scroll", scheduleFit);
     document.fonts?.ready.then(scheduleFit);
 
     function render(focus = false) {
@@ -214,6 +221,7 @@
       dialog.classList.add("ob-opening");
       window.scrollTo({ top: 0, behavior: "instant" });
       dialog.showModal();
+      dialog.scrollTop = 0;
       fitComposition();
       document.documentElement.classList.add("pmas-onboarding-open");
       find("#obTitle").focus({ preventScroll: true });
