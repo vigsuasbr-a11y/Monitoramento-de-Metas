@@ -11,7 +11,7 @@ function load(file) {
       const classes = new Set();
       nodes.set(id, { value: '', textContent: '', innerHTML: '', style: {}, dataset: {}, attributes: {}, type: 'password',
         classList: { add(name) { classes.add(name); }, remove(name) { classes.delete(name); }, toggle(name, on) { on ? classes.add(name) : classes.delete(name); }, contains(name) { return classes.has(name); } },
-        setAttribute(name, value) { this.attributes[name] = value; }, querySelector(selector) { return node(id + ':' + selector); }, querySelectorAll() { return []; }, focus() {}, scrollIntoView() {} });
+        setAttribute(name, value) { this.attributes[name] = value; }, removeAttribute(name) { delete this.attributes[name]; }, querySelector(selector) { return node(id + ':' + selector); }, querySelectorAll() { return []; }, focus() {}, scrollIntoView() {} });
     }
     return nodes.get(id);
   };
@@ -206,4 +206,30 @@ test('painel e CSV exibem motivos e planejamento anual com texto escapado', asyn
   assert(details.includes('&lt;script&gt;motivo'));assert(details.includes('2028'));assert(details.includes('Planejamento &lt;img&gt;'));
   assert(!details.includes('<script>'));
   const csv=await blob.text();assert(csv.includes('Justificativas das metas não concluídas'));assert(csv.includes('2028: Planejamento <img>'));
+});
+
+test('etapa visual e navegação acessível acompanham a etapa real', () => {
+  const a=load('script.js');
+  a.context.document.documentElement={dataset:{}};
+  a.context.window.scrollTo=()=>{};
+  const first=a.context.document.getElementById('nav1'),second=a.context.document.getElementById('nav2');
+  first.dataset.stepTarget='1';second.dataset.stepTarget='2';first.setAttribute('aria-current','step');
+  a.context.document.querySelectorAll=selector=>selector==='.step-button'?[first,second]:[];
+  a.run('setActiveStep(2)');
+  assert.equal(a.context.document.documentElement.dataset.step,'2');
+  assert.equal(second.attributes['aria-current'],'step');
+  assert.equal(first.attributes['aria-current'],undefined);
+  assert.equal(a.run('state.currentStep'),2);
+});
+
+test('janelas bloqueiam foco no formulário e devolvem foco ao fechar', () => {
+  const a=load('script.js'),app={inert:false};let focusReturned=false;
+  a.context.document.querySelector=selector=>selector==='.app-shell'?app:null;
+  a.context.document.activeElement={isConnected:true,offsetParent:{},focus(){focusReturned=true}};
+  a.run(`showModal(document.getElementById('successModal'),'button')`);
+  assert.equal(app.inert,true);
+  assert.equal(a.nodes.get('successModal').attributes['aria-hidden'],'false');
+  a.run(`hideModal(document.getElementById('successModal'))`);
+  assert.equal(app.inert,false);assert.equal(focusReturned,true);
+  assert.equal(a.nodes.get('successModal').attributes['aria-hidden'],'true');
 });

@@ -1,8 +1,9 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-BR" data-step="1">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#0b4a95">
   <title>Monitoramento das Metas do PMAS 2026-2029</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -12,10 +13,12 @@
   <link rel="stylesheet" href="onboarding.css">
   <script defer src="onboarding.js"></script>
   <script defer src="config.js"></script>
-  <script defer src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <script defer src="https://unpkg.com/lucide@1.61.0/dist/umd/lucide.min.js"></script>
   <script defer src="script.js"></script>
 </head>
 <body>
+  <a class="skip-link" href="#conteudo">Ir para o formulário</a>
+
   <div class="app-shell">
     <aside class="sidebar" aria-label="Navegação do formulário">
       <div class="sidebar-inner">
@@ -25,8 +28,8 @@
           </div>
           <div>
             <p class="brand-kicker">PMAS</p>
-            <h2>Plano Municipal de Assistência Social</h2>
-            <strong>2026-2029</strong>
+            <p class="brand-title">Plano Municipal de Assistência Social</p>
+            <strong class="brand-years">2026-2029</strong>
           </div>
         </div>
 
@@ -44,23 +47,23 @@
         </section>
 
         <nav class="stepper" aria-label="Etapas">
-          <button class="step-button is-active" type="button" data-step-target="1">
+          <button class="step-button is-active" type="button" data-step-target="1" aria-current="step">
             <span class="step-number">1</span>
-            <span>
+            <span class="step-text">
               <strong>Identificação</strong>
               <small>Informações iniciais</small>
             </span>
           </button>
           <button class="step-button" type="button" data-step-target="2">
             <span class="step-number">2</span>
-            <span>
+            <span class="step-text">
               <strong>Metas executadas</strong>
               <small>Marque Sim ou Não</small>
             </span>
           </button>
           <button class="step-button" type="button" data-step-target="3">
             <span class="step-number">3</span>
-            <span>
+            <span class="step-text">
               <strong>Conclusão</strong>
               <small>Revisão e envio</small>
             </span>
@@ -72,8 +75,8 @@
             <i data-lucide="circle-help"></i>
           </div>
           <div>
-            <h3>Precisa de ajuda?</h3>
-            <p>Entre em contato com a Secretaria de Assistência Social de Belford Roxo.</p>
+            <p class="help-title">Precisa de ajuda?</p>
+            <p class="help-text">Entre em contato com a Secretaria de Assistência Social de Belford Roxo.</p>
           </div>
           <a href="mailto:assistenciasocial@prefeituradebelfordroxo.rj.gov.br" class="help-link">
             Falar com a SEMASC
@@ -83,15 +86,17 @@
       </div>
     </aside>
 
-    <main class="workspace">
+    <main class="workspace" id="conteudo" tabindex="-1">
       <header class="topbar">
         <div class="title-block">
           <img class="prefeitura-logo" src="assets/prefeitura-logo-azul.png" width="1564" height="724" alt="Prefeitura de Belford Roxo">
-          <span class="eyebrow">Prefeitura Municipal de Belford Roxo</span>
-          <h1>Monitoramento das Metas do Plano Municipal de Assistência Social 2026-2029</h1>
-          <p>
-            Formulário destinado ao monitoramento e acompanhamento das metas do Plano Municipal de Assistência Social de Belford Roxo, visando garantir o registro das ações executadas, o controle dos resultados alcançados e o fortalecimento da gestão socioassistencial do município.
-          </p>
+          <div class="title-text">
+            <span class="eyebrow">Prefeitura Municipal de Belford Roxo</span>
+            <h1>Monitoramento das Metas do Plano Municipal de Assistência Social <span class="nowrap">2026-2029</span></h1>
+            <p class="title-lead">
+              Formulário destinado ao monitoramento e acompanhamento das metas do Plano Municipal de Assistência Social de Belford Roxo, visando garantir o registro das ações executadas, o controle dos resultados alcançados e o fortalecimento da gestão socioassistencial do município.
+            </p>
+          </div>
         </div>
         <div class="autosave-pill" role="status">
           <i data-lucide="shield-check"></i>
@@ -133,59 +138,62 @@
       </section>
 
       <form id="monitoringForm" novalidate>
-        <section class="form-step is-active" data-step="1">
+        <section class="form-step is-active" data-step="1" aria-labelledby="step1Title">
           <div class="panel">
             <div class="section-heading">
               <div class="section-icon" aria-hidden="true">
                 <i data-lucide="id-card"></i>
               </div>
               <div>
-                <span class="eyebrow">Etapa 1</span>
-                <h2>Identificação</h2>
+                <span class="eyebrow">Etapa 1 de 3</span>
+                <h2 id="step1Title">Identificação</h2>
                 <p>Informe os dados do responsável pelo preenchimento e da unidade/setor vinculado ao monitoramento.</p>
               </div>
             </div>
 
+            <p class="required-note"><span aria-hidden="true">*</span> Campos obrigatórios</p>
+
             <div class="form-grid">
-              <label class="field">
-                <span>Nome <strong>*</strong></span>
-                <input type="text" id="nome" data-field="nome" placeholder="Informe seu nome">
-                <small class="field-error"></small>
-              </label>
+              <div class="field">
+                <label for="nome">Nome <strong aria-hidden="true">*</strong></label>
+                <input type="text" id="nome" data-field="nome" placeholder="Informe seu nome" autocomplete="name" aria-required="true" aria-describedby="nome-erro">
+                <small class="field-error" id="nome-erro" aria-live="polite"></small>
+              </div>
 
-              <label class="field">
-                <span>Cargo <strong>*</strong></span>
-                <input type="text" id="cargo" data-field="cargo" placeholder="Informe seu cargo">
-                <small class="field-error"></small>
-              </label>
+              <div class="field">
+                <label for="cargo">Cargo <strong aria-hidden="true">*</strong></label>
+                <input type="text" id="cargo" data-field="cargo" placeholder="Informe seu cargo" autocomplete="organization-title" aria-required="true" aria-describedby="cargo-erro">
+                <small class="field-error" id="cargo-erro" aria-live="polite"></small>
+              </div>
 
-              <label class="field">
-                <span>Setor/Unidade <strong>*</strong></span>
-                <input type="text" id="setor" data-field="setor" placeholder="Ex.: CRAS, CREAS, FMAS, CMAS">
-                <small class="field-error"></small>
-              </label>
+              <div class="field">
+                <label for="setor">Setor/Unidade <strong aria-hidden="true">*</strong></label>
+                <input type="text" id="setor" data-field="setor" placeholder="Ex.: CRAS, CREAS, FMAS, CMAS" autocomplete="off" aria-required="true" aria-describedby="setor-erro">
+                <small class="field-error" id="setor-erro" aria-live="polite"></small>
+              </div>
 
-              <label class="field">
-                <span>Data de preenchimento <strong>*</strong></span>
-                <input type="date" id="dataPreenchimento" data-field="dataPreenchimento">
-                <small class="field-error"></small>
-              </label>
+              <div class="field">
+                <label for="dataPreenchimento">Data de preenchimento <strong aria-hidden="true">*</strong></label>
+                <input type="date" id="dataPreenchimento" data-field="dataPreenchimento" aria-required="true" aria-describedby="dataPreenchimento-erro">
+                <small class="field-error" id="dataPreenchimento-erro" aria-live="polite"></small>
+              </div>
 
-              <label class="field">
-                <span>Telefone</span>
-                <input type="tel" id="telefone" data-field="telefone" placeholder="(21) 00000-0000">
-                <small class="field-error"></small>
-              </label>
+              <div class="field">
+                <label for="telefone">Telefone</label>
+                <input type="tel" id="telefone" data-field="telefone" placeholder="(21) 00000-0000" autocomplete="tel" inputmode="tel" aria-describedby="telefone-erro">
+                <small class="field-error" id="telefone-erro" aria-live="polite"></small>
+              </div>
 
-              <label class="field">
-                <span>E-mail</span>
-                <input type="email" id="email" data-field="email" placeholder="nome@dominio.gov.br">
-                <small class="field-error"></small>
-              </label>
+              <div class="field">
+                <label for="email">E-mail</label>
+                <input type="email" id="email" data-field="email" placeholder="nome@dominio.gov.br" autocomplete="email" inputmode="email" aria-describedby="email-erro">
+                <small class="field-error" id="email-erro" aria-live="polite"></small>
+              </div>
 
-              <label class="field field-wide">
-                <span>Eixo do Plano Municipal de Assistência Social <strong>*</strong></span>
-                <select id="eixo" data-field="eixo">
+              <div class="field field-wide field-axis">
+                <label for="eixo">Eixo do Plano Municipal de Assistência Social <strong aria-hidden="true">*</strong></label>
+                <p class="field-hint" id="eixo-dica">O eixo escolhido define quais metas você vai responder na próxima etapa.</p>
+                <select id="eixo" data-field="eixo" aria-required="true" aria-describedby="eixo-dica eixo-erro">
                   <option value="">Selecione o eixo vinculado</option>
                   <option value="ORGÃO GESTOR">ORGÃO GESTOR (GABINETE)</option>
                   <option value="GESTÃO SUAS">GESTÃO SUAS</option>
@@ -197,8 +205,8 @@
                   <option value="CONSELHO MUNICIPAL DE ASSISTÊNCIA SOCIAL (CMAS)">CONSELHO MUNICIPAL DE ASSISTÊNCIA SOCIAL (CMAS)</option>
                   <option value="CONSELHO MUNICIPAL DE SEGURANÇA ALIMENTAR E NUTRICIONAL (COMSEA)">CONSELHO MUNICIPAL DE SEGURANÇA ALIMENTAR E NUTRICIONAL (COMSEA)</option>
                 </select>
-                <small class="field-error"></small>
-              </label>
+                <small class="field-error" id="eixo-erro" aria-live="polite"></small>
+              </div>
 
             </div>
 
@@ -215,18 +223,20 @@
           </div>
         </section>
 
-        <section class="form-step" data-step="2">
+        <section class="form-step" data-step="2" aria-labelledby="step2Title">
           <div class="panel">
             <div class="section-heading">
               <div class="section-icon" aria-hidden="true">
                 <i data-lucide="clipboard-list"></i>
               </div>
               <div>
-                <span class="eyebrow">Etapa 2</span>
-                <h2>Metas executadas</h2>
+                <span class="eyebrow">Etapa 2 de 3</span>
+                <h2 id="step2Title">Metas executadas</h2>
                 <p>Marque as metas que já foram executadas, concluídas ou alcançadas pelo setor até o presente momento.</p>
               </div>
             </div>
+
+            <p class="axis-current" id="currentAxis" hidden><span>Eixo selecionado</span><strong></strong></p>
 
             <div class="info-strip">
               <i data-lucide="info"></i>
@@ -302,15 +312,15 @@
           </div>
         </section>
 
-        <section class="form-step" data-step="3">
+        <section class="form-step" data-step="3" aria-labelledby="step3Title">
           <div class="panel">
             <div class="section-heading">
               <div class="section-icon" aria-hidden="true">
                 <i data-lucide="send"></i>
               </div>
               <div>
-                <span class="eyebrow">Etapa 3</span>
-                <h2>Revisão e envio</h2>
+                <span class="eyebrow">Etapa 3 de 3</span>
+                <h2 id="step3Title">Revisão e envio</h2>
                 <p>Confira o resumo do preenchimento antes de enviar o monitoramento.</p>
               </div>
             </div>
@@ -318,18 +328,20 @@
             <div class="review-grid" id="reviewSummary"></div>
 
             <div class="review-lists">
-              <article class="review-list-card">
+              <article class="review-list-card review-list-yes">
                 <div class="review-list-head">
                   <i data-lucide="check-circle-2"></i>
                   <h3>Metas executadas</h3>
+                  <span class="review-count" id="executedCount"></span>
                 </div>
                 <ul id="executedList"></ul>
               </article>
 
-              <article class="review-list-card">
+              <article class="review-list-card review-list-no">
                 <div class="review-list-head">
                   <i data-lucide="x-circle"></i>
                   <h3>Metas não executadas</h3>
+                  <span class="review-count" id="notExecutedCount"></span>
                 </div>
                 <ul id="notExecutedList"></ul>
               </article>
@@ -365,7 +377,8 @@
 
       <footer class="creator-credit">
         <button type="button" class="pmas-about-button" id="pmasAboutButton">Conheça o PMAS</button>
-        Criado por <strong>Alessandro Araujo</strong> <span>SEMASC Vigilância</span>
+        <a class="footer-help" href="mailto:assistenciasocial@prefeituradebelfordroxo.rj.gov.br">Precisa de ajuda? Falar com a SEMASC</a>
+        <p class="credit-line">Criado por <strong>Alessandro Araujo</strong> <span>SEMASC Vigilância</span></p>
       </footer>
     </main>
   </div>
@@ -376,7 +389,7 @@
   </div>
 
   <div class="modal-backdrop" id="successModal" aria-hidden="true">
-    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="successTitle">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="successTitle" aria-describedby="successMessage">
       <div class="modal-icon">
         <i data-lucide="badge-check"></i>
       </div>

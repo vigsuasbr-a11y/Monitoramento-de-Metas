@@ -615,6 +615,11 @@ function renderCategories() {
   renderFutureGoals();
   const container = document.getElementById("categoriesContainer");
   const visibleCategories = getVisibleCategories();
+  const axisNode = document.getElementById("currentAxis");
+  if (axisNode) {
+    axisNode.hidden = !state.identificacao.eixo;
+    axisNode.querySelector("strong").textContent = state.identificacao.eixo;
+  }
 
   if (!visibleCategories.length) {
     container.innerHTML = `
@@ -639,8 +644,8 @@ function renderCategories() {
             <span class="category-title">
               <span class="category-icon"><i data-lucide="${category.icon}"></i></span>
               <span>
-                <h3>${escapeHTML(category.title)}</h3>
-                <p>${escapeHTML(category.description)}</p>
+                <strong class="category-name">${escapeHTML(category.title)}</strong>
+                <span class="category-desc">${escapeHTML(category.description)}</span>
               </span>
             </span>
             <span class="category-meta">
@@ -665,22 +670,21 @@ function renderMetaCard(item, category) {
     <article class="meta-card" data-meta-card="${item.id}" data-status="${status}">
       <div class="meta-top">
         <div class="meta-title-wrap">
-          <span class="meta-icon"><i data-lucide="${iconForMeta(category.id)}"></i></span>
-          <div>
-            <h4>${escapeHTML(item.texto)}</h4>
-            <span class="meta-axis">${escapeHTML(item.eixoOriginal)}</span>
+          <h4>${escapeHTML(item.texto)}</h4>
+          <div class="meta-line">
+            <span class="meta-code" title="Código da meta">${escapeHTML(item.id)}</span>
+            <span class="status-pill ${statusClass(status)}" data-status-pill="${item.id}">${statusLabel(status)}</span>
           </div>
         </div>
         <div class="meta-actions" role="group" aria-label="Resposta da meta ${escapeHTML(item.id)}">
-          <button class="choice-btn ${saved.resposta === "sim" ? "is-selected" : ""}" type="button" data-meta-id="${item.id}" data-choice="sim">
+          <button class="choice-btn ${saved.resposta === "sim" ? "is-selected" : ""}" type="button" data-meta-id="${item.id}" data-choice="sim" aria-pressed="${saved.resposta === "sim"}">
             Sim
             <i data-lucide="check-circle-2"></i>
           </button>
-          <button class="choice-btn ${saved.resposta === "nao" ? "is-selected" : ""}" type="button" data-meta-id="${item.id}" data-choice="nao">
+          <button class="choice-btn ${saved.resposta === "nao" ? "is-selected" : ""}" type="button" data-meta-id="${item.id}" data-choice="nao" aria-pressed="${saved.resposta === "nao"}">
             Não
             <i data-lucide="x-circle"></i>
           </button>
-          <span class="status-pill ${statusClass(status)}" data-status-pill="${item.id}">${statusLabel(status)}</span>
         </div>
       </div>
       <div class="meta-reason" data-reason-wrap="${item.id}" ${saved.resposta === "nao" ? "" : "hidden"}>
@@ -691,22 +695,6 @@ function renderMetaCard(item, category) {
       </div>
     </article>
   `;
-}
-
-function iconForMeta(categoryId) {
-  const icons = {
-    "gestao-institucional": "briefcase-business",
-    "gestao-financeira": "circle-dollar-sign",
-    "vigilancia-socioassistencial": "scan-search",
-    "protecao-social-basica": "users-round",
-    "protecao-social-especial": "heart-handshake",
-    "beneficios-socioassistenciais": "hand-coins",
-    "controle-social": "landmark",
-    "educacao-permanente": "book-open-check",
-    "resultados-monitoramento": "activity"
-  };
-
-  return icons[categoryId] || "target";
 }
 
 function setMetaChoice(id, choice) {
@@ -743,7 +731,9 @@ function updateMetaCard(id) {
   reason.setAttribute("aria-invalid", "false");
   card.querySelector(".reason-error").textContent = "";
   card.querySelectorAll("[data-choice]").forEach((button) => {
-    button.classList.toggle("is-selected", button.dataset.choice === itemState.resposta);
+    const selected = button.dataset.choice === itemState.resposta;
+    button.classList.toggle("is-selected", selected);
+    button.setAttribute("aria-pressed", String(selected));
   });
 
   const pill = card.querySelector(`[data-status-pill="${id}"]`);
@@ -782,7 +772,10 @@ function updateProgress() {
   getVisibleCategories().forEach((category) => {
     const answeredInCategory = category.metas.filter((item) => ensureMetaState(item.id).resposta).length;
     const countNode = document.querySelector(`[data-category-count="${category.id}"]`);
-    if (countNode) countNode.textContent = `${answeredInCategory}/${category.metas.length}`;
+    if (countNode) {
+      countNode.textContent = `${answeredInCategory}/${category.metas.length}`;
+      countNode.closest(".category-card")?.classList.toggle("is-complete", answeredInCategory === category.metas.length);
+    }
   });
 }
 
@@ -812,6 +805,7 @@ function setActiveStep(step) {
   const nextStep = Math.min(Math.max(step, 1), TOTAL_STEPS);
   state.currentStep = nextStep;
   setText("sideStepText", `${nextStep} de ${TOTAL_STEPS}`);
+  document.documentElement.dataset.step = String(nextStep);
 
   document.querySelectorAll(".form-step").forEach((node) => {
     node.classList.toggle("is-active", Number(node.dataset.step) === nextStep);
@@ -821,6 +815,8 @@ function setActiveStep(step) {
     const target = Number(node.dataset.stepTarget);
     node.classList.toggle("is-active", target === nextStep);
     node.classList.toggle("is-complete", target < nextStep);
+    if (target === nextStep) node.setAttribute("aria-current", "step");
+    else node.removeAttribute("aria-current");
   });
 
   window.scrollTo({ top: 0, behavior: "smooth" });
@@ -926,6 +922,7 @@ function validateIdentification() {
     const empty = !field.value.trim();
 
     wrapper.classList.toggle("is-invalid", empty);
+    field.setAttribute("aria-invalid", String(empty));
     error.textContent = empty ? "Campo obrigatório." : "";
     if (empty) isValid = false;
   });
@@ -941,6 +938,7 @@ function clearInvalid(field) {
   const wrapper = field.closest(".field");
   if (!wrapper) return;
   wrapper.classList.remove("is-invalid");
+  field.removeAttribute("aria-invalid");
   const error = wrapper.querySelector(".field-error");
   if (error) error.textContent = "";
 }
@@ -961,6 +959,8 @@ function renderReview() {
 
   renderReviewList("executedList", "sim");
   renderReviewList("notExecutedList", "nao");
+  setText("executedCount", stats.sim);
+  setText("notExecutedCount", stats.nao);
   const goals = getAdditionalGoals();
   document.getElementById("additionalGoalsReview").innerHTML = goals.length
     ? goals.map((goal) => `<li>${escapeHTML(goal)}</li>`).join("")
@@ -1140,30 +1140,71 @@ function openSuccessModal() {
       ? "A resposta foi encaminhada para a aba correspondente ao eixo selecionado."
       : "O envio foi simulado. Configure a URL do Apps Script no arquivo script.js para registrar os dados na planilha."
   );
-  modal.classList.add("is-visible");
-  modal.setAttribute("aria-hidden", "false");
+  showModal(modal, '[data-action="close-modal"]');
 }
 
 function showTutorialOnce() {
   if (state.tutorialShown) return;
   state.tutorialShown = true;
   saveState(false);
-  const modal = document.getElementById("tutorialModal");
-  modal.classList.add("is-visible");
-  modal.setAttribute("aria-hidden", "false");
+  showModal(document.getElementById("tutorialModal"), '[data-action="close-tutorial"]');
 }
 
 function closeTutorialModal() {
-  const modal = document.getElementById("tutorialModal");
-  modal.classList.remove("is-visible");
-  modal.setAttribute("aria-hidden", "true");
+  hideModal(document.getElementById("tutorialModal"));
 }
 
 function closeSuccessModal() {
-  const modal = document.getElementById("successModal");
+  hideModal(document.getElementById("successModal"));
+}
+
+let modalReturnFocus = null;
+
+function showModal(modal, focusSelector) {
+  modalReturnFocus = document.activeElement;
+  modal.classList.add("is-visible");
+  modal.setAttribute("aria-hidden", "false");
+  const app = document.querySelector(".app-shell");
+  if (app) app.inert = true;
+  modal.querySelector(focusSelector)?.focus({ preventScroll: true });
+}
+
+function hideModal(modal) {
   modal.classList.remove("is-visible");
   modal.setAttribute("aria-hidden", "true");
+  const app = document.querySelector(".app-shell");
+  if (app) app.inert = false;
+  const target = modalReturnFocus;
+  modalReturnFocus = null;
+  // Se o elemento de origem não está mais visível (a etapa mudou), leva o foco ao título da etapa atual.
+  if (target?.isConnected && target.offsetParent !== null) {
+    target.focus({ preventScroll: true });
+  } else {
+    const heading = document.querySelector(".form-step.is-active h2");
+    heading?.setAttribute("tabindex", "-1");
+    heading?.focus({ preventScroll: true });
+  }
 }
+
+document.addEventListener("keydown", (event) => {
+  const openModal = document.querySelector(".modal-backdrop.is-visible");
+  if (!openModal) return;
+  if (event.key === "Escape") {
+    event.preventDefault();
+    if (openModal.id === "tutorialModal") closeTutorialModal();
+    else closeSuccessModal();
+    return;
+  }
+  if (event.key === "Tab") {
+    // Mantém o foco dentro da janela aberta.
+    const focusable = [...openModal.querySelectorAll("button, [href], input, select, textarea")].filter((node) => !node.disabled);
+    if (!focusable.length) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+    else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+  }
+});
 
 function statusLabel(status) {
   const labels = {
