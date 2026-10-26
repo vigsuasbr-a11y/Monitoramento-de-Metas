@@ -1,4 +1,4 @@
-const APPS_SCRIPT_WEB_APP_URL = window.PMAS_CONFIG?.appsScriptUrl || "https://script.google.com/macros/s/AKfycbz_RP1WzFbZFQ5SGMFPnxoC_fURp_Bo3NfPRCU8GQM5-DO6LXb0EbT5FErTOzLHKhTLtw/exec";
+const APPS_SCRIPT_WEB_APP_URL = window.PMAS_CONFIG?.appsScriptUrl || "";
 const SESSION_KEY = "pmas-vigilancia-session";
 const PAGE_SIZE = 10;
 
@@ -76,13 +76,12 @@ async function requestDashboard(credentials) {
     throw new Error("Configure a URL do Apps Script no arquivo config.js.");
   }
 
-  const url = new URL(APPS_SCRIPT_WEB_APP_URL);
-  url.searchParams.set("acao", "painel");
-  url.searchParams.set("sistema", credentials.sistema);
-  url.searchParams.set("senha", credentials.senha);
-  url.searchParams.set("_", Date.now());
-
-  const response = await fetch(url.toString(), { method: "GET", cache: "no-store" });
+  const response = await fetch(APPS_SCRIPT_WEB_APP_URL, {
+    method: "POST",
+    cache: "no-store",
+    headers: { "Content-Type": "text/plain;charset=utf-8" },
+    body: JSON.stringify({ acao: "painel", sistema: credentials.sistema, senha: credentials.senha })
+  });
   if (!response.ok) throw new Error("Não foi possível consultar a planilha.");
 
   const data = await response.json();
@@ -198,6 +197,13 @@ function renderMetrics() {
   setText("metricYes", totalYes);
   setText("metricNo", totalNo);
   setText("metricRate", rate);
+  setText("metricIncluded", dashboardState.filtered.reduce((sum, item) => sum + getIncludedGoals(item).length, 0));
+}
+
+function getIncludedGoals(submission) {
+  return Array.isArray(submission.inclusaoMetas)
+    ? submission.inclusaoMetas.filter((text) => typeof text === "string" && text.trim())
+    : [];
 }
 
 function renderTable() {
@@ -215,6 +221,7 @@ function renderTable() {
       <td><span class="axis-badge">${escapeHTML(item.eixo || "")}</span></td>
       <td class="number-yes">${Number(item.sim || 0)}</td>
       <td class="number-no">${Number(item.nao || 0)}</td>
+      <td class="number-included">${getIncludedGoals(item).length}</td>
       <td class="rate-cell">
         <div class="rate-value"><span>Execução</span><strong>${Number(item.percentualExecucao || 0)}%</strong></div>
         <div class="rate-track"><span style="width:${clampPercent(item.percentualExecucao)}%"></span></div>
@@ -262,6 +269,7 @@ function openDetails(id) {
     <div class="detail-lists">
       ${detailList("Metas executadas", yes, "is-yes", "check-circle-2")}
       ${detailList("Metas não executadas", no, "is-no", "x-circle")}
+      ${detailList("Inclusão de Metas Concluídas", getIncludedGoals(submission).map((texto) => ({ texto })), "is-included", "list-plus")}
     </div>
   `;
 
@@ -306,8 +314,8 @@ function changePage(direction) {
 function exportCsv() {
   if (!dashboardState.filtered.length) return;
   const rows = [
-    ["Recebido em", "Responsável", "Cargo", "Setor/Unidade", "Eixo", "Total", "Sim", "Não", "% de execução"],
-    ...dashboardState.filtered.map((item) => [item.recebidoEm, item.nome, item.cargo, item.setor, item.eixo, item.total, item.sim, item.nao, item.percentualExecucao])
+    ["Recebido em", "Responsável", "Cargo", "Setor/Unidade", "Eixo", "Total", "Sim", "Não", "% de execução", "Quantidade de metas concluídas incluídas", "Inclusão de Metas Concluídas"],
+    ...dashboardState.filtered.map((item) => [item.recebidoEm, item.nome, item.cargo, item.setor, item.eixo, item.total, item.sim, item.nao, item.percentualExecucao, getIncludedGoals(item).length, getIncludedGoals(item).join("\n")])
   ];
   const csv = rows.map((row) => row.map(csvCell).join(";")).join("\r\n");
   const blob = new Blob(["\ufeff", csv], { type: "text/csv;charset=utf-8" });
@@ -319,7 +327,9 @@ function exportCsv() {
 }
 
 function csvCell(value) {
-  return `"${String(value ?? "").replaceAll('"', '""')}"`;
+  const text = String(value ?? "");
+  const safe = /^[\s]*[=+\-@]/.test(text) ? "'" + text : text;
+  return `"${safe.replaceAll('"', '""')}"`;
 }
 
 function togglePassword() {

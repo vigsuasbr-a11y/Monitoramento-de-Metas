@@ -201,7 +201,11 @@ button { cursor: pointer; }
 .dashboard-header h1 { margin: 0; font-size: 1.8rem; }
 .dashboard-header p { margin: 7px 0 0; color: var(--gray-500); font-size: 0.86rem; }
 .header-actions { display: flex; gap: 8px; }
-.dashboard-metrics { display: grid; grid-template-columns: repeat(4, minmax(160px, 1fr)); gap: 12px; margin: 22px 0; }
+.dashboard-metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin: 22px 0; }
+.metric-included { color: var(--blue-700); background: var(--blue-100); }
+.number-included { color: var(--blue-700); font-weight: 800; }
+.detail-list.is-included { grid-column: 1 / -1; border-color: var(--blue-700); }
+.detail-list.is-included li { white-space: pre-wrap; overflow-wrap: anywhere; }
 .dashboard-metric { display: flex; align-items: center; gap: 12px; min-height: 92px; padding: 16px; border: 1px solid var(--gray-200); border-radius: var(--radius); background: var(--white); box-shadow: var(--shadow-sm); }
 .dashboard-metric small, .dashboard-metric strong { display: block; }
 .dashboard-metric small { color: var(--gray-500); font-size: 0.77rem; font-weight: 700; }

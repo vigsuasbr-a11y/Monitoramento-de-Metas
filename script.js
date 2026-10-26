@@ -1,5 +1,6 @@
-const APPS_SCRIPT_WEB_APP_URL = window.PMAS_CONFIG?.appsScriptUrl || "https://script.google.com/macros/s/AKfycbz_RP1WzFbZFQ5SGMFPnxoC_fURp_Bo3NfPRCU8GQM5-DO6LXb0EbT5FErTOzLHKhTLtw/exec";
+const APPS_SCRIPT_WEB_APP_URL = window.PMAS_CONFIG?.appsScriptUrl || "";
 const STORAGE_KEY = "pmas-monitoramento-2026-2029";
+const PENDING_SUBMISSION_KEY = STORAGE_KEY + ":envio-pendente";
 const TOTAL_STEPS = 3;
 const LEGACY_COMSEA_AXIS = "CONSELHO MUNICIPAL DE SEGURANÇA ALIMENTAR E NUTRICIONAL";
 const COMSEA_AXIS = "CONSELHO MUNICIPAL DE SEGURANÇA ALIMENTAR E NUTRICIONAL (COMSEA)";
@@ -889,6 +890,18 @@ function buildPayload() {
   };
 }
 
+function prepareSubmissionPayload() {
+  let payload = buildPayload();
+  const signature = JSON.stringify({ ...payload, enviadoEm: undefined });
+  try {
+    const previous = JSON.parse(localStorage.getItem(PENDING_SUBMISSION_KEY) || "null");
+    if (previous && typeof previous.enviadoEm === "string"
+      && JSON.stringify({ ...previous, enviadoEm: undefined }) === signature) payload = previous;
+    localStorage.setItem(PENDING_SUBMISSION_KEY, JSON.stringify(payload));
+  } catch (error) { console.warn("Não foi possível guardar a referência desta tentativa de envio."); }
+  return payload;
+}
+
 async function enviarFormulario() {
   addAdditionalGoal(false);
   if (!validateIdentification()) {
@@ -902,30 +915,31 @@ async function enviarFormulario() {
   }
 
   const button = document.getElementById("submitButton");
-  const payload = buildPayload();
+  const payload = prepareSubmissionPayload();
   button.disabled = true;
   button.innerHTML = `Enviando... <i data-lucide="loader-circle"></i>`;
   refreshIcons();
 
-  console.log("Dados preenchidos para envio:", payload);
-
   try {
-    if (APPS_SCRIPT_WEB_APP_URL.trim()) {
-      await fetch(APPS_SCRIPT_WEB_APP_URL, {
+    if (!APPS_SCRIPT_WEB_APP_URL.trim()) throw new Error("Configure a URL do Apps Script no arquivo config.js.");
+    const response = await fetch(APPS_SCRIPT_WEB_APP_URL, {
         method: "POST",
-        mode: "no-cors",
         headers: {
           "Content-Type": "text/plain;charset=utf-8"
         },
         body: JSON.stringify(payload)
       });
+    if (!response.ok) throw new Error("O servidor não confirmou o recebimento.");
+    const result = await response.json();
+    if (result.ok !== true || typeof result.id !== "string" || !result.id) {
+      throw new Error(result.mensagem || "O servidor não confirmou a gravação na planilha.");
     }
 
     openSuccessModal();
     resetFormAfterSuccessfulSubmit();
   } catch (error) {
     console.error("Falha ao enviar o formulário.", error);
-    alert("Não foi possível enviar agora. Os dados continuam salvos como rascunho neste navegador.");
+    alert(`${error.message || "Não foi possível confirmar o envio."}\nOs dados continuam salvos como rascunho neste navegador. Você pode tentar novamente.`);
   } finally {
     button.disabled = false;
     button.innerHTML = `Enviar monitoramento <i data-lucide="send"></i>`;
@@ -934,6 +948,7 @@ async function enviarFormulario() {
 }
 
 function resetFormAfterSuccessfulSubmit() {
+  localStorage.removeItem(PENDING_SUBMISSION_KEY);
   localStorage.removeItem(STORAGE_KEY);
   state = structuredCloneSafe(initialState);
   hydrateDate();
@@ -958,6 +973,7 @@ function clearLocalDraft() {
   const confirmed = window.confirm("Deseja limpar o rascunho salvo neste navegador?");
   if (!confirmed) return;
 
+  localStorage.removeItem(PENDING_SUBMISSION_KEY);
   localStorage.removeItem(STORAGE_KEY);
   state = structuredCloneSafe(initialState);
   hydrateDate();
