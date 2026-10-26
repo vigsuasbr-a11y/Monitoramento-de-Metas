@@ -251,6 +251,7 @@ const initialState = {
   currentStep: 1,
   tutorialShown: false,
   inclusaoMetasPorEixo: {},
+  novasMetasPorEixo: {},
   identificacao: {
     nome: "",
     cargo: "",
@@ -264,7 +265,7 @@ const initialState = {
     allMetas.map((item) => [
       item.id,
       {
-        resposta: ""
+        resposta: "", justificativa: ""
       }
     ])
   )
@@ -279,6 +280,17 @@ document.addEventListener("DOMContentLoaded", () => {
   bindFormFields();
   bindActions();
   bindAdditionalGoals();
+  bindFutureGoals();
+  document.getElementById("categoriesContainer").addEventListener("input", (event) => {
+    const id = event.target.dataset.justificativa;
+    if (!id) return;
+    ensureMetaState(id).justificativa = event.target.value;
+    event.target.setAttribute("aria-invalid", "false");
+    document.getElementById(`reason-error-${id}`).textContent = "";
+    scheduleSave();
+    updateAnswersError();
+    renderReview();
+  });
   renderAll();
   refreshIcons();
 });
@@ -301,6 +313,14 @@ function loadState() {
     const merged = structuredCloneSafe(initialState);
     merged.currentStep = stored.currentStep || 1;
     merged.tutorialShown = Boolean(stored.tutorialShown);
+    if (stored.novasMetasPorEixo && typeof stored.novasMetasPorEixo === "object") {
+      for (const [axis, goals] of Object.entries(stored.novasMetasPorEixo)) {
+        if (!Array.isArray(goals)) continue;
+        merged.novasMetasPorEixo[axis === LEGACY_COMSEA_AXIS ? COMSEA_AXIS : axis] = goals.slice(0, 100)
+          .filter(goal => goal && typeof goal.texto === "string")
+          .map(goal => ({ texto: goal.texto.slice(0, 1000), ano: String(goal.ano || "") }));
+      }
+    }
     if (stored.inclusaoMetasPorEixo && typeof stored.inclusaoMetasPorEixo === "object") {
       for (const [axis, goals] of Object.entries(stored.inclusaoMetasPorEixo)) {
         if (!Array.isArray(goals)) continue;
@@ -322,7 +342,7 @@ function loadState() {
     merged.metas = Object.fromEntries(
       Object.entries({ ...merged.metas, ...(stored.metas || {}) }).map(([id, data]) => [
         id,
-        { resposta: data?.resposta || "" }
+        { resposta: data?.resposta || "", justificativa: typeof data?.justificativa === "string" ? data.justificativa.slice(0, 2000) : "" }
       ])
     );
     return merged;
@@ -495,6 +515,81 @@ function renderAdditionalGoals() {
     : `${goals.length} ${goals.length === 1 ? "meta incluída" : "metas incluídas"} neste eixo.`;
 }
 
+function getFutureGoals() {
+  return state.novasMetasPorEixo[state.identificacao.eixo] || [];
+}
+
+function bindFutureGoals() {
+  document.getElementById("addFutureGoalButton").addEventListener("click", () => {
+    const goals = getFutureGoals();
+    if (!state.identificacao.eixo || goals.length >= 100) return;
+    state.novasMetasPorEixo[state.identificacao.eixo] = [...goals, { texto: "", ano: "" }];
+    renderFutureGoals();
+    document.getElementById(`future-text-${goals.length}`).focus();
+    saveState();
+    renderReview();
+  });
+  const rows = document.getElementById("futureGoalsRows");
+  rows.addEventListener("input", (event) => {
+    const field = event.target;
+    if (!field.dataset.futureField) return;
+    const goal = getFutureGoals()[Number(field.dataset.futureIndex)];
+    if (!goal) return;
+    goal[field.dataset.futureField] = field.value;
+    field.setAttribute("aria-invalid", "false");
+    field.closest(".future-goal-row").querySelector(".future-goal-error").textContent = "";
+    scheduleSave();
+    renderReview();
+  });
+  rows.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-remove-future]");
+    if (!button) return;
+    getFutureGoals().splice(Number(button.dataset.removeFuture), 1);
+    renderFutureGoals();
+    renderReview();
+    saveState();
+    document.getElementById("addFutureGoalButton").focus();
+  });
+}
+
+function renderFutureGoals() {
+  const goals = getFutureGoals();
+  document.getElementById("addFutureGoalButton").disabled = !state.identificacao.eixo || goals.length >= 100;
+  document.getElementById("futureGoalsRows").innerHTML = goals.map((goal, index) => `
+    <article class="future-goal-row">
+      <div class="future-goal-description"><label for="future-text-${index}">Nova meta ${index + 1} *</label>
+        <textarea id="future-text-${index}" data-future-field="texto" data-future-index="${index}" rows="2" maxlength="1000" required aria-describedby="future-error-${index}" aria-invalid="false" placeholder="Descreva a meta que o setor pretende realizar.">${escapeHTML(goal.texto)}</textarea></div>
+      <div><label for="future-year-${index}">Ano de conclusão *</label>
+        <select id="future-year-${index}" data-future-field="ano" data-future-index="${index}" required aria-describedby="future-error-${index}" aria-invalid="false"><option value="">Selecione o ano</option>${[2026, 2027, 2028, 2029].map(year => `<option value="${year}" ${String(year) === String(goal.ano) ? "selected" : ""}>${year}</option>`).join("")}</select></div>
+      <button class="future-remove" type="button" data-remove-future="${index}" aria-label="Remover nova meta ${index + 1}" title="Remover nova meta">×</button>
+      <span class="future-goal-error" id="future-error-${index}"></span>
+    </article>`).join("");
+  document.getElementById("futureGoalsStatus").textContent = !state.identificacao.eixo
+    ? "Selecione um eixo na identificação para planejar novas metas."
+    : goals.length ? `${goals.length} ${goals.length === 1 ? "nova meta planejada" : "novas metas planejadas"}. Informe a descrição e o ano de cada uma.`
+    : "Nenhuma nova meta adicionada. Inclua somente se houver metas futuras a registrar.";
+}
+
+function validateFutureGoals() {
+  if (getFutureGoals().map(goal => goal.texto).join("\n").length > 40000) {
+    document.getElementById("futureGoalsStatus").textContent = "As novas metas ultrapassaram o limite de 40.000 caracteres por envio. Reduza o texto antes de continuar.";
+    document.getElementById("addFutureGoalButton").focus();
+    return false;
+  }
+  let firstInvalid = null;
+  getFutureGoals().forEach((goal, index) => {
+    const textInvalid = !goal.texto.trim() || goal.texto.length > 1000;
+    const yearInvalid = !["2026", "2027", "2028", "2029"].includes(String(goal.ano));
+    document.getElementById(`future-text-${index}`).setAttribute("aria-invalid", String(textInvalid));
+    document.getElementById(`future-year-${index}`).setAttribute("aria-invalid", String(yearInvalid));
+    document.getElementById(`future-error-${index}`).textContent = textInvalid || yearInvalid ? "Informe a descrição da meta e o ano previsto para conclusão (2026–2029)." : "";
+    if (!firstInvalid && (textInvalid || yearInvalid)) firstInvalid = document.getElementById(`${textInvalid ? "future-text" : "future-year"}-${index}`);
+  });
+  firstInvalid?.focus();
+  firstInvalid?.scrollIntoView({ behavior: "smooth", block: "center" });
+  return !firstInvalid;
+}
+
 function getActiveMetas() {
   const selectedAxis = state.identificacao.eixo;
   if (!selectedAxis) return [];
@@ -517,6 +612,7 @@ function renderCategories() {
   const input = document.getElementById("additionalGoalInput");
   input.value = "";
   renderAdditionalGoals();
+  renderFutureGoals();
   const container = document.getElementById("categoriesContainer");
   const visibleCategories = getVisibleCategories();
 
@@ -587,6 +683,12 @@ function renderMetaCard(item, category) {
           <span class="status-pill ${statusClass(status)}" data-status-pill="${item.id}">${statusLabel(status)}</span>
         </div>
       </div>
+      <div class="meta-reason" data-reason-wrap="${item.id}" ${saved.resposta === "nao" ? "" : "hidden"}>
+        <label for="reason-${item.id}">Justificativa da não conclusão <span aria-hidden="true">*</span></label>
+        <p id="reason-help-${item.id}">Explique o motivo pelo qual esta meta não foi concluída no período informado.</p>
+        <textarea id="reason-${item.id}" data-justificativa="${item.id}" rows="3" maxlength="2000" ${saved.resposta === "nao" ? "required" : "disabled"} aria-describedby="reason-help-${item.id} reason-error-${item.id}" aria-invalid="false" placeholder="Ex.: A ação depende de contratação em andamento. Informe as dificuldades encontradas.">${escapeHTML(saved.justificativa || "")}</textarea>
+        <span class="reason-error" id="reason-error-${item.id}"></span>
+      </div>
     </article>
   `;
 }
@@ -616,11 +718,12 @@ function setMetaChoice(id, choice) {
   updateAnswersError();
   renderReview();
   saveState(false);
+  if (choice === "nao") document.getElementById(`reason-${id}`)?.focus({ preventScroll: true });
 }
 
 function ensureMetaState(id) {
   if (!state.metas[id]) {
-    state.metas[id] = { resposta: "" };
+    state.metas[id] = { resposta: "", justificativa: "" };
   }
 
   return state.metas[id];
@@ -633,6 +736,12 @@ function updateMetaCard(id) {
   if (!card) return;
 
   card.dataset.status = status;
+  const reason = card.querySelector("[data-justificativa]");
+  card.querySelector("[data-reason-wrap]").hidden = itemState.resposta !== "nao";
+  reason.disabled = itemState.resposta !== "nao";
+  reason.required = itemState.resposta === "nao";
+  reason.setAttribute("aria-invalid", "false");
+  card.querySelector(".reason-error").textContent = "";
   card.querySelectorAll("[data-choice]").forEach((button) => {
     button.classList.toggle("is-selected", button.dataset.choice === itemState.resposta);
   });
@@ -645,7 +754,8 @@ function updateMetaCard(id) {
 }
 
 function renderAll() {
-  if (state.currentStep > 2 && getStats().pendentes > 0) {
+  const missingReasons = getActiveMetas().some(item => ensureMetaState(item.id).resposta === "nao" && !ensureMetaState(item.id).justificativa?.trim());
+  if (state.currentStep > 2 && (getStats().pendentes > 0 || missingReasons)) {
     state.currentStep = 2;
   }
   setActiveStep(state.currentStep);
@@ -726,10 +836,12 @@ function goToStep(step) {
     return;
   }
 
-  if (movingForward && step >= 3 && !validateAllMetas()) {
-    setActiveStep(2);
-    showTutorialOnce();
-    return;
+  if (movingForward && step >= 3) {
+    if (state.currentStep !== 2) setActiveStep(2);
+    if (!validateAllMetas()) {
+      showTutorialOnce();
+      return;
+    }
   }
 
   if (step === 3) {
@@ -745,23 +857,33 @@ function goToStep(step) {
 
 function validateAllMetas() {
   const unanswered = getActiveMetas().filter((item) => !ensureMetaState(item.id).resposta);
+  const missingReasons = getActiveMetas().filter((item) => {
+    const saved = ensureMetaState(item.id);
+    return saved.resposta === "nao" && !saved.justificativa?.trim();
+  });
   document.querySelectorAll(".meta-card.is-required").forEach((card) => card.classList.remove("is-required"));
 
-  if (!unanswered.length) {
+  if (!unanswered.length && !missingReasons.length) {
     hideAnswersError();
-    return true;
+    return validateFutureGoals();
   }
 
-  unanswered.forEach((item) => {
+  [...unanswered, ...missingReasons].forEach((item) => {
     document.querySelector(`[data-meta-card="${item.id}"]`)?.classList.add("is-required");
   });
 
-  const firstCard = document.querySelector(`[data-meta-card="${unanswered[0].id}"]`);
+  missingReasons.forEach(item => {
+    document.getElementById(`reason-${item.id}`).setAttribute("aria-invalid", "true");
+    document.getElementById(`reason-error-${item.id}`).textContent = "Justifique por que esta meta não foi concluída.";
+  });
+  const first = [...unanswered, ...missingReasons][0];
+  const firstCard = document.querySelector(`[data-meta-card="${first.id}"]`);
   const category = firstCard?.closest(".category-card");
   category?.classList.add("is-open");
   category?.querySelector("[data-category-trigger]")?.setAttribute("aria-expanded", "true");
-  showAnswersError(unanswered.length);
+  showAnswersError(unanswered.length, missingReasons.length);
   firstCard?.scrollIntoView({ behavior: "smooth", block: "center" });
+  if (!unanswered.length) document.getElementById(`reason-${first.id}`).focus({ preventScroll: true });
   return false;
 }
 
@@ -770,18 +892,22 @@ function updateAnswersError() {
   if (!alert?.classList.contains("is-visible")) return;
 
   const unanswered = getStats().pendentes;
-  if (!unanswered) {
+  const reasons = getActiveMetas().filter(item => ensureMetaState(item.id).resposta === "nao" && !ensureMetaState(item.id).justificativa?.trim()).length;
+  if (!unanswered && !reasons) {
     hideAnswersError();
     return;
   }
 
-  showAnswersError(unanswered);
+  showAnswersError(unanswered, reasons);
 }
 
-function showAnswersError(count) {
+function showAnswersError(count, reasons = 0) {
   const alert = document.getElementById("answersError");
   if (!alert) return;
-  alert.querySelector("span").textContent = `Responda ${count} ${count === 1 ? "meta" : "metas"} antes de revisar o envio.`;
+  const messages = [];
+  if (count) messages.push(`Responda ${count} ${count === 1 ? "meta" : "metas"}`);
+  if (reasons) messages.push(`justifique ${reasons} ${reasons === 1 ? "meta não concluída" : "metas não concluídas"}`);
+  alert.querySelector("span").textContent = `${messages.join(" e ")} antes de revisar o envio.`;
   alert.classList.add("is-visible");
 }
 
@@ -839,6 +965,9 @@ function renderReview() {
   document.getElementById("additionalGoalsReview").innerHTML = goals.length
     ? goals.map((goal) => `<li>${escapeHTML(goal)}</li>`).join("")
     : '<li class="empty-state">Nenhuma meta adicional incluída.</li>';
+  document.getElementById("futureGoalsReview").innerHTML = getFutureGoals().length
+    ? getFutureGoals().map(goal => `<li><strong>Conclusão prevista: ${escapeHTML(String(goal.ano || "Ano não informado"))}</strong><p>${escapeHTML(goal.texto || "Descrição não informada")}</p></li>`).join("")
+    : '<li class="empty-state">Nenhuma nova meta planejada.</li>';
 }
 
 function reviewCard(label, value) {
@@ -856,7 +985,7 @@ function renderReviewList(listId, status) {
 
   const items = getActiveMetas().filter((item) => ensureMetaState(item.id).resposta === status);
   node.innerHTML = items.length
-    ? items.map((item) => `<li>${escapeHTML(item.texto)}</li>`).join("")
+    ? items.map((item) => `<li>${escapeHTML(item.texto)}${status === "nao" ? `<p class="review-reason"><strong>Justificativa:</strong> ${escapeHTML(ensureMetaState(item.id).justificativa || "Não informada")}</p>` : ""}</li>`).join("")
     : `<li class="empty-state">Nenhuma meta nesta situação.</li>`;
 }
 
@@ -865,6 +994,7 @@ function buildPayload() {
 
   return {
     origem: "Monitoramento das Metas do Plano Municipal de Assistência Social 2026-2029",
+    versaoFormulario: 2,
     enviadoEm: new Date().toISOString(),
     identificacao: {
       nome: state.identificacao.nome,
@@ -877,6 +1007,7 @@ function buildPayload() {
     },
     totais: stats,
     inclusaoMetas: [...getAdditionalGoals()],
+    novasMetas: getFutureGoals().map(goal => ({ texto: goal.texto.trim(), ano: Number(goal.ano) })),
     metas: getActiveMetas().map((item) => {
       const saved = ensureMetaState(item.id);
       return {
@@ -884,7 +1015,8 @@ function buildPayload() {
         categoria: item.categoryTitle,
         eixoOriginal: item.eixoOriginal,
         texto: item.texto,
-        resposta: saved.resposta
+        resposta: saved.resposta,
+        justificativa: saved.resposta === "nao" ? (saved.justificativa || "").trim() : ""
       };
     })
   };
@@ -910,7 +1042,10 @@ async function enviarFormulario() {
   }
 
   if (!validateAllMetas()) {
-    setActiveStep(2);
+    if (state.currentStep !== 2) {
+      setActiveStep(2);
+      validateAllMetas();
+    }
     return;
   }
 
@@ -922,6 +1057,10 @@ async function enviarFormulario() {
 
   try {
     if (!APPS_SCRIPT_WEB_APP_URL.trim()) throw new Error("Configure a URL do Apps Script no arquivo config.js.");
+    // Impede que uma implantação antiga aceite o envio e descarte os novos campos.
+    const healthResponse = await fetch(APPS_SCRIPT_WEB_APP_URL, { cache: "no-store" });
+    const health = healthResponse.ok ? await healthResponse.json() : null;
+    if (!health?.ok || health.versaoFormulario !== 2) throw new Error("O recebimento precisa ser atualizado para salvar as justificativas e as novas metas. Entre em contato com a equipe responsável.");
     const response = await fetch(APPS_SCRIPT_WEB_APP_URL, {
         method: "POST",
         headers: {

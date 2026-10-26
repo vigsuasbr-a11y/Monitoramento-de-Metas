@@ -241,6 +241,10 @@ function getIncludedGoals(submission) {
     : [];
 }
 
+function getFutureGoals(submission) {
+  return Array.isArray(submission.novasMetas) ? submission.novasMetas.filter(meta => meta && typeof meta.texto === "string") : [];
+}
+
 function renderTable() {
   const totalPages = Math.max(1, Math.ceil(dashboardState.filtered.length / PAGE_SIZE));
   if (dashboardState.page > totalPages) dashboardState.page = totalPages;
@@ -306,6 +310,7 @@ function openDetails(id) {
       ${detailList("Metas executadas", yes, "is-yes", "check-circle-2")}
       ${detailList("Metas não executadas", no, "is-no", "x-circle")}
       ${detailList("Inclusão de Metas Concluídas", getIncludedGoals(submission).map((texto) => ({ texto })), "is-included", "list-plus")}
+      ${detailList("Inclusão de Novas Metas (Período anual)", getFutureGoals(submission), "is-included", "calendar-plus")}
     </div>
   `;
 
@@ -332,7 +337,7 @@ function detailItem(label, value) {
 
 function detailList(title, items, className, icon) {
   const content = items.length
-    ? items.map((item) => `<li><strong>${escapeHTML(item.codigo || "")}</strong> ${escapeHTML(item.texto || "")}</li>`).join("")
+    ? items.map((item) => `<li><strong>${escapeHTML(item.codigo || "")}</strong> ${escapeHTML(item.texto || "")}${item.ano ? `<p class="detail-reason"><strong>Conclusão prevista:</strong> ${escapeHTML(String(item.ano))}</p>` : ""}${className === "is-no" ? `<p class="detail-reason"><strong>Justificativa:</strong> ${escapeHTML(item.justificativa || "Não informada neste registro.")}</p>` : ""}</li>`).join("")
     : `<li>Nenhuma meta nesta situação.</li>`;
   return `<section class="detail-list ${className}"><h3><i data-lucide="${icon}"></i>${escapeHTML(title)} (${items.length})</h3><ul>${content}</ul></section>`;
 }
@@ -355,8 +360,10 @@ function changePage(direction) {
 function exportCsv() {
   if (!dashboardState.filtered.length) return;
   const rows = [
-    ["Recebido em", "Responsável", "Cargo", "Setor/Unidade", "Eixo", "Total", "Sim", "Não", "% de execução", "Quantidade de metas concluídas incluídas", "Inclusão de Metas Concluídas"],
-    ...dashboardState.filtered.map((item) => [item.recebidoEm, item.nome, item.cargo, item.setor, item.eixo, item.total, item.sim, item.nao, item.percentualExecucao, getIncludedGoals(item).length, getIncludedGoals(item).join("\n")])
+    ["Recebido em", "Responsável", "Cargo", "Setor/Unidade", "Eixo", "Total", "Sim", "Não", "% de execução", "Quantidade de metas concluídas incluídas", "Inclusão de Metas Concluídas", "Justificativas das metas não concluídas", "Quantidade de novas metas", "Inclusão de Novas Metas (Período anual)"],
+    ...dashboardState.filtered.map((item) => [item.recebidoEm, item.nome, item.cargo, item.setor, item.eixo, item.total, item.sim, item.nao, item.percentualExecucao, getIncludedGoals(item).length, getIncludedGoals(item).join("\n"),
+      (item.metas || []).filter(meta => normalizeText(meta.resposta) === "nao").map(meta => `${meta.codigo || meta.id || ""} — ${meta.texto || ""}: ${meta.justificativa || "Não informada neste registro."}`).join("\n"),
+      getFutureGoals(item).length, getFutureGoals(item).map(meta => `${meta.ano}: ${meta.texto}`).join("\n")])
   ];
   const csv = rows.map((row) => row.map(csvCell).join(";")).join("\r\n");
   const blob = new Blob(["\ufeff", csv], { type: "text/csv;charset=utf-8" });

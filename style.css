@@ -1214,6 +1214,24 @@ button {
 .additional-goal-tag button { display: grid; place-items: center; flex-shrink: 0; width: 32px; height: 32px; border: 0; border-radius: 50%; background: var(--purple-100); color: var(--purple-900); font-size: 1.4rem; }
 .additional-goal-tag button:hover { background: var(--red-100); color: var(--red-700); }
 .additional-goal-tag button:focus-visible { outline: 2px solid var(--purple-700); outline-offset: 2px; }
+.meta-reason { margin-top: 16px; padding: 16px; border: 1px solid #ead4d6; border-radius: 12px; background: #fffafa; }
+.meta-reason[hidden] { display: none !important; }
+.meta-reason label, .future-goal-row label { display: block; font-weight: 600; font-size: .88rem; margin-bottom: 8px; color: var(--gray-800); }
+.meta-reason label > span { color: var(--red-700); }
+.meta-reason p { margin: 0 0 10px; color: var(--gray-600); font-size: .82rem; line-height: 1.5; }
+.meta-reason textarea, .future-goal-row textarea, .future-goal-row select { display: block; width: 100%; min-height: 44px; padding: 12px; border: 1px solid var(--gray-300); border-radius: 8px; background: var(--white); color: var(--gray-800); font: inherit; font-size: .9rem; line-height: 1.5; }
+.meta-reason textarea, .future-goal-row textarea { resize: vertical; }
+.meta-reason textarea:focus-visible, .future-goal-row textarea:focus-visible, .future-goal-row select:focus-visible { outline: 3px solid var(--purple-100); border-color: var(--purple-700); }
+.meta-reason [aria-invalid="true"], .future-goal-row [aria-invalid="true"] { border-color: var(--red-700); }
+.reason-error, .future-goal-error { display: block; color: var(--red-700); font-size: .82rem; line-height: 1.5; margin-top: 6px; }
+.future-goals-rows { display: grid; gap: 12px; margin-bottom: 16px; }
+.future-goal-row { display: grid; grid-template-columns: minmax(0, 1fr) 180px 44px; gap: 12px; align-items: start; padding: 16px; border: 1px solid var(--gray-200); border-radius: 12px; background: var(--white); }
+.future-goal-row > div { min-width: 0; }
+.future-goal-error { grid-column: 1 / -1; margin: 0; }
+.future-goal-error:empty, .reason-error:empty { display: none; }
+.future-remove { width: 44px; height: 44px; margin-top: 29px; border: 1px solid var(--gray-300); border-radius: 8px; background: var(--white); color: var(--red-700); font-size: 1.5rem; }
+.future-remove:hover { background: var(--red-100); }
+.review-reason { margin: 10px 0 0; padding: 10px; border-left: 3px solid var(--red-700); background: #fffafa; white-space: pre-wrap; overflow-wrap: anywhere; }
 .additional-goals-review { grid-column: 1 / -1; }
 .additional-goals-review li { overflow-wrap: anywhere; }
 
@@ -1221,6 +1239,9 @@ button {
   .additional-goals { padding: 18px; }
   .additional-goals-entry { flex-direction: column; }
   .additional-goals-entry button { width: 100%; }
+  .future-goal-row { grid-template-columns: minmax(0, 1fr) 44px; padding: 12px; }
+  .future-goal-description { grid-column: 1 / -1; }
+  .meta-reason textarea, .future-goal-row textarea, .future-goal-row select { font-size: 16px; }
 }
 
 @media (max-width: 1180px) {

@@ -67,17 +67,18 @@ function ambiente() {
     enviadoEm: '2026-10-26T12:00:00.000Z',
     identificacao: { nome: 'Teste', cargo: 'Técnico', setor: 'Vigilância', dataPreenchimento: '2026-10-26', telefone: '(21) 99999-0000', email: 'teste@example.com', eixo },
     totais: { sim: 999, percentualExecucao: 999 },
-    metas: catalogo.filter(m => m.eixo === eixo).map((m, i) => ({ id: m.id, texto: 'Texto adulterado', resposta: i % 2 ? 'nao' : 'sim' })),
-    inclusaoMetas: ['Meta concluída A', 'Meta concluída B']
+    metas: catalogo.filter(m => m.eixo === eixo).map((m, i) => ({ id: m.id, texto: 'Texto adulterado', resposta: i % 2 ? 'nao' : 'sim', justificativa: i % 2 ? 'A contratação prevista ainda está em andamento.' : '' })),
+    inclusaoMetas: ['Meta concluída A', 'Meta concluída B'],
+    novasMetas: [{ texto: 'Nova meta planejada A', ano: 2027 }, { texto: 'Nova meta planejada B', ano: 2029 }]
   });
   const post = value => JSON.parse(context.doPost({ postData: { contents: JSON.stringify(value) } }).text);
   const painel = senha => JSON.parse(context.doGet({ parameter: { acao: 'painel', sistema: 'Sistema de Vigilância', senha } }).text);
   return { context, executar, livro, props, catalogo, payload, post, painel, falhar: nome => { falharNaAba = nome; } };
 }
 
-test('cria 13 abas; repetir a instalação preserva respostas e senha', () => {
+test('cria 14 abas; repetir a instalação preserva respostas e senha', () => {
   const a = ambiente(); a.context.criarAbas();
-  assert.equal(a.livro.abas.size, 13); assert.equal(a.catalogo.length, 151);
+  assert.equal(a.livro.abas.size, 14); assert.equal(a.catalogo.length, 151);
   a.post(a.payload());
   const senha = a.props.get('PMAS_SENHA_PAINEL');
   a.context.criarAbas();
@@ -123,7 +124,7 @@ test('rejeita campos inválidos sem registrar linhas', () => {
 test('falha na gravação desfaz os detalhes já escritos; nova tentativa funciona', () => {
   const a = ambiente(); a.context.criarAbas(); a.falhar('Envios');
   assert.equal(a.post(a.payload()).ok, false);
-  for (const nome of ['Envios', 'Respostas das metas', 'Metas concluídas incluídas', 'Gestão SUAS']) assert.equal(a.livro.getSheetByName(nome).getLastRow(), 1);
+  for (const nome of ['Envios', 'Respostas das metas', 'Metas concluídas incluídas', 'Novas metas planejadas', 'Gestão SUAS']) assert.equal(a.livro.getSheetByName(nome).getLastRow(), 1);
   assert.equal(a.post(a.payload()).ok, true);
 });
 
@@ -136,4 +137,76 @@ test('neutraliza fórmulas e não sobrescreve cabeçalhos incompatíveis', () =>
   a.livro.getSheetByName('Envios').rows[0][0] = 'Cabeçalho alterado';
   assert.throws(() => a.context.criarAbas(), /Cabeçalho incompatível/);
   assert.equal(a.livro.getSheetByName('Envios').getLastRow(), 2);
+});
+
+test('exige justificativa para Não; Sim não grava justificativa residual', () => {
+  const a = ambiente(); a.context.criarAbas();
+  const p = a.payload();
+  for (const value of ['', '   ', undefined, 'x'.repeat(2001), 123]) {
+    p.metas[1].justificativa = value;
+    const result = a.post(p);
+    assert.equal(result.ok, false);
+    assert.equal(a.livro.getSheetByName('Envios').getLastRow(), 1);
+  }
+  p.metas[1].justificativa = 'Aguardando recursos.';
+  p.metas[0].justificativa = 'Texto anterior, não deve ser enviado para Sim.';
+  assert.equal(a.post(p).ok, true);
+  const retorno = a.painel(a.props.get('PMAS_SENHA_PAINEL')).envios[0];
+  assert.equal(retorno.metas[0].justificativa, '');
+  assert.equal(retorno.metas[1].justificativa, 'Aguardando recursos.');
+});
+
+test('metas futuras exigem texto e ano do PMAS e não alteram os totais originais', () => {
+  const a = ambiente(); a.context.criarAbas();
+  for (const novasMetas of [[{texto:'',ano:2027}],[{texto:'Planejamento',ano:''}],[{texto:'Planejamento',ano:2030}],[{texto:'Planejamento',ano:2026.5}],[{texto:'Planejamento',ano:[]}],[{texto:'x'.repeat(1001),ano:2027}],['Meta sem ano'],Array(101).fill({texto:'Meta',ano:2027})]) {
+    const p = a.payload(); p.novasMetas = novasMetas;
+    assert.equal(a.post(p).ok, false);
+  }
+  assert.equal(a.livro.getSheetByName('Envios').getLastRow(),1);
+  const p = a.payload();
+  assert.equal(a.post(p).ok, true);
+  const r = a.painel(a.props.get('PMAS_SENHA_PAINEL')).envios[0];
+  assert.deepEqual(r.novasMetas, p.novasMetas);
+  assert.equal(r.sim,15); assert.equal(r.nao,15); assert.equal(r.percentualExecucao,50);
+  assert.equal(a.livro.getSheetByName('Novas metas planejadas').getLastRow(),3);
+  p.enviadoEm='2026-10-26T14:00:00Z'; delete p.novasMetas;
+  assert.equal(a.post(p).ok, true);
+});
+
+test('migração da planilha antiga mantém respostas, colunas de eixos e senha', () => {
+  const a = ambiente(); a.context.criarAbas(); a.post(a.payload());
+  const senha=a.props.get('PMAS_SENHA_PAINEL');
+  const eixoAntes=JSON.stringify(a.livro.getSheetByName('Gestão SUAS').rows);
+  const metas=a.livro.getSheetByName('Respostas das metas');
+  metas.rows=metas.rows.map(row=>row.slice(0,6));
+  a.livro.abas.delete('Novas metas planejadas');
+  const antes=JSON.stringify(metas.rows);
+  a.context.criarAbas();
+  assert.equal(a.livro.abas.size,14);
+  assert.equal(a.props.get('PMAS_SENHA_PAINEL'),senha);
+  assert.equal(JSON.stringify(a.livro.getSheetByName('Gestão SUAS').rows),eixoAntes);
+  assert.equal(JSON.stringify(metas.rows.map(row=>row.slice(0,6))),antes);
+  assert.equal(metas.rows[0][6],'Justificativa da não conclusão');
+  const retorno=a.painel(senha).envios[0];
+  assert.equal(retorno.metas[1].justificativa,'');assert.deepEqual(retorno.novasMetas,[]);
+  a.context.criarAbas();assert.equal(metas.getLastRow(),31);
+});
+
+test('chave de repetição considera justificativas e novas metas', () => {
+  const a=ambiente();a.context.criarAbas();const p=a.payload();
+  const primeiro=a.post(p);
+  assert.equal(a.post(p).id,primeiro.id);
+  p.metas[1].justificativa='Uma justificativa corrigida.';
+  const segundo=a.post(p);assert.notEqual(segundo.id,primeiro.id);
+  p.novasMetas[0].ano=2028;
+  assert.notEqual(a.post(p).id,segundo.id);
+});
+
+test('não grava respostas sem migração e anuncia versão de formulário', () => {
+  const a=ambiente();a.context.criarAbas();
+  a.livro.abas.delete('Novas metas planejadas');
+  assert.equal(a.post(a.payload()).ok,false);
+  assert.equal(a.livro.getSheetByName('Respostas das metas').getLastRow(),1);
+  const health=JSON.parse(a.context.doGet({parameter:{}}).text);
+  assert.equal(health.versaoFormulario,2);
 });

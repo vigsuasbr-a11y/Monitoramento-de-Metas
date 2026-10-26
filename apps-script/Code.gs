@@ -1,10 +1,11 @@
 /** PMAS 2026–2029 — cole este arquivo no Apps Script vinculado à nova planilha. */
 const PMAS = Object.freeze({
   sistema: 'Sistema de Vigilância',
-  abas: { envios: 'Envios', metas: 'Respostas das metas', incluidas: 'Metas concluídas incluídas', resumo: 'Resumo' },
+  abas: { envios: 'Envios', metas: 'Respostas das metas', incluidas: 'Metas concluídas incluídas', novas: 'Novas metas planejadas', resumo: 'Resumo' },
   envios: ['ID do envio', 'Recebido em', 'Enviado em', 'Nome', 'Cargo', 'Setor/Unidade', 'Data de preenchimento', 'Telefone', 'E-mail', 'Eixo', 'Total de metas', 'Sim', 'Não', 'Execução (%)', 'Metas concluídas incluídas', 'Situação', 'Chave do envio'],
-  metas: ['ID do envio', 'Código', 'Categoria', 'Eixo', 'Meta', 'Resposta'],
+  metas: ['ID do envio', 'Código', 'Categoria', 'Eixo', 'Meta', 'Resposta', 'Justificativa da não conclusão'],
   incluidas: ['ID do envio', 'Recebido em', 'Responsável', 'Setor/Unidade', 'Eixo', 'Meta concluída incluída'],
+  novas: ['ID do envio', 'Recebido em', 'Responsável', 'Setor/Unidade', 'Eixo', 'Nova meta', 'Ano previsto de conclusão'],
   resumo: ['Eixo', 'Envios recebidos', 'Metas executadas', 'Metas não executadas', 'Execução (%)', 'Metas concluídas incluídas']
 });
 
@@ -28,7 +29,7 @@ function criarAbas() {
     if (configurada && configurada !== livro.getId()) throw new Error('Este projeto já está vinculado a outra planilha. Crie um projeto na nova planilha.');
     [
       [PMAS.abas.envios, PMAS.envios], [PMAS.abas.metas, PMAS.metas],
-      [PMAS.abas.incluidas, PMAS.incluidas], [PMAS.abas.resumo, PMAS.resumo]
+      [PMAS.abas.incluidas, PMAS.incluidas], [PMAS.abas.novas, PMAS.novas], [PMAS.abas.resumo, PMAS.resumo]
     ].forEach(([nome, cabecalho]) => garantirAba_(livro, nome, cabecalho));
     eixos_().forEach(eixo => garantirAba_(livro, eixo.aba, cabecalhoEixo_(eixo)));
     props.setProperty('PMAS_PLANILHA_ID', livro.getId());
@@ -40,7 +41,7 @@ function criarAbas() {
     SpreadsheetApp.flush();
   } finally { lock.releaseLock(); }
   SpreadsheetApp.getUi().alert('Abas do PMAS preparadas',
-    'As 13 abas estão prontas. Nenhuma resposta existente foi apagada.' +
+    'As 14 abas estão prontas. Nenhuma resposta existente foi apagada.' +
     (senhaNova ? '\n\nGuarde a senha administrativa do painel:\n' + senhaNova : '\n\nA senha administrativa existente foi mantida.') +
     '\n\nA senha pode ser consultada ou alterada em Configurações do projeto > Propriedades do script > PMAS_SENHA_PAINEL.',
     SpreadsheetApp.getUi().ButtonSet.OK);
@@ -64,7 +65,8 @@ function doGet(e) {
   try {
     const p = (e && e.parameter) || {};
     if (p.acao === 'painel') return json_(consultarPainel_(p));
-    return json_({ ok: true, servico: 'Monitoramento PMAS 2026–2029', configurado: Boolean(PropertiesService.getScriptProperties().getProperty('PMAS_PLANILHA_ID')) });
+    const props = PropertiesService.getScriptProperties();
+    return json_({ ok: true, servico: 'Monitoramento PMAS 2026–2029', configurado: Boolean(props.getProperty('PMAS_PLANILHA_ID')), versaoFormulario: 2 });
   } catch (erro) { return json_({ ok: false, mensagem: erro.message }); }
 }
 
@@ -76,6 +78,10 @@ function receberResposta_(dados) {
   let resultado;
   try {
     livro = abrirPlanilha_();
+    // Interrompe antes de gravar se a migração das novas colunas/abas não foi executada.
+    const cabecalhoMetas = aba_(livro, PMAS.abas.metas).getRange(1, 1, 1, PMAS.metas.length).getValues()[0];
+    const cabecalhoNovas = aba_(livro, PMAS.abas.novas).getRange(1, 1, 1, PMAS.novas.length).getValues()[0];
+    if (JSON.stringify(cabecalhoMetas) !== JSON.stringify(PMAS.metas) || JSON.stringify(cabecalhoNovas) !== JSON.stringify(PMAS.novas)) throw new Error('Execute criarAbas para atualizar o recebimento antes de enviar respostas.');
     const envios = aba_(livro, PMAS.abas.envios);
     const anteriores = linhas_(envios);
     const repetido = anteriores.find(linha => linha[16] === dados.chave && linha[15] === 'Recebido');
@@ -87,8 +93,9 @@ function receberResposta_(dados) {
       i.telefone, i.email, i.eixo, dados.metas.length, dados.sim, dados.nao, dados.percentual,
       dados.inclusaoMetas.join('\n'), 'Recebido', dados.chave];
     // O índice geral é gravado por último: o painel só publica envios completos.
-    anexar_(aba_(livro, PMAS.abas.metas), dados.metas.map(m => [id, m.id, m.categoria, i.eixo, m.texto, m.resposta === 'sim' ? 'Sim' : 'Não']), gravacoes);
+    anexar_(aba_(livro, PMAS.abas.metas), dados.metas.map(m => [id, m.id, m.categoria, i.eixo, m.texto, m.resposta === 'sim' ? 'Sim' : 'Não', m.justificativa]), gravacoes);
     anexar_(aba_(livro, PMAS.abas.incluidas), dados.inclusaoMetas.map(texto => [id, recebidoEm, i.nome, i.setor, i.eixo, texto]), gravacoes);
+    anexar_(aba_(livro, PMAS.abas.novas), dados.novasMetas.map(meta => [id, recebidoEm, i.nome, i.setor, i.eixo, meta.texto, meta.ano]), gravacoes);
     anexar_(aba_(livro, dados.eixo.aba), [base.concat(dados.metas.map(m => m.resposta === 'sim' ? 'Sim' : 'Não'))], gravacoes);
     anexar_(envios, [base], gravacoes);
     SpreadsheetApp.flush();
@@ -128,9 +135,21 @@ function validarResposta_(payload) {
   const respostas = new Map();
   payload.metas.forEach(m => {
     if (!m || !catalogo.some(c => c.id === m.id) || respostas.has(m.id) || !['sim', 'nao'].includes(m.resposta)) throw new Error('Meta desconhecida, repetida ou sem resposta válida.');
-    respostas.set(m.id, m.resposta);
+    const justificativa = m.resposta === 'nao' ? texto_(m.justificativa, 'justificativa', 2000) : '';
+    if (m.resposta === 'nao' && !justificativa) throw new Error('Justifique por que a meta ' + m.id + ' não foi concluída.');
+    respostas.set(m.id, { resposta: m.resposta, justificativa });
   });
-  const metas = catalogo.map(m => ({ id: m.id, categoria: m.categoria, texto: m.texto, resposta: respostas.get(m.id) }));
+  const metas = catalogo.map(m => ({ id: m.id, categoria: m.categoria, texto: m.texto, resposta: respostas.get(m.id).resposta, justificativa: respostas.get(m.id).justificativa }));
+  const futuras = payload.novasMetas === undefined ? [] : payload.novasMetas;
+  if (!Array.isArray(futuras) || futuras.length > 100) throw new Error('Inclua no máximo 100 novas metas por envio.');
+  const novasMetas = futuras.map(meta => {
+    if (!meta || typeof meta !== 'object') throw new Error('Nova meta inválida.');
+    const texto = texto_(meta.texto, 'nova meta', 1000);
+    const ano = Number(meta.ano);
+    if (!texto || ![2026, 2027, 2028, 2029].includes(ano) || !['string', 'number'].includes(typeof meta.ano)) throw new Error('Informe a descrição e um ano de conclusão entre 2026 e 2029 para cada nova meta.');
+    return { texto, ano };
+  });
+  if (novasMetas.map(meta => meta.texto).join('\n').length > 40000) throw new Error('As novas metas ultrapassaram o limite de texto por envio.');
   const extras = payload.inclusaoMetas === undefined ? [] : payload.inclusaoMetas;
   if (!Array.isArray(extras) || extras.length > 100) throw new Error('Inclua no máximo 100 metas concluídas por envio.');
   const inclusaoMetas = [];
@@ -145,8 +164,8 @@ function validarResposta_(payload) {
   if (!enviadoEm || isNaN(new Date(enviadoEm).getTime())) throw new Error('Data de envio inválida.');
   const sim = metas.filter(m => m.resposta === 'sim').length;
   // Ignora totais e textos vindos do navegador: utiliza o catálogo e recalcula no servidor.
-  const dados = { identificacao, eixo, metas, inclusaoMetas, enviadoEm, sim, nao: metas.length - sim, percentual: Math.round(sim / metas.length * 100) };
-  dados.chave = digest_(JSON.stringify([identificacao, enviadoEm, metas, inclusaoMetas]));
+  const dados = { identificacao, eixo, metas, inclusaoMetas, novasMetas, enviadoEm, sim, nao: metas.length - sim, percentual: Math.round(sim / metas.length * 100) };
+  dados.chave = digest_(JSON.stringify([identificacao, enviadoEm, metas, inclusaoMetas, novasMetas]));
   return dados;
 }
 
@@ -160,17 +179,23 @@ function consultarPainel_(credenciais) {
     const detalhes = new Map();
     linhas_(aba_(livro, PMAS.abas.metas)).forEach(r => {
       if (!detalhes.has(r[0])) detalhes.set(r[0], []);
-      detalhes.get(r[0]).push({ id: r[1], codigo: r[1], categoria: r[2], eixoOriginal: r[3], texto: r[4], resposta: r[5] });
+      detalhes.get(r[0]).push({ id: r[1], codigo: r[1], categoria: r[2], eixoOriginal: r[3], texto: r[4], resposta: r[5], justificativa: r[6] || '' });
     });
     const incluidas = new Map();
     linhas_(aba_(livro, PMAS.abas.incluidas)).forEach(r => {
       if (!incluidas.has(r[0])) incluidas.set(r[0], []);
       incluidas.get(r[0]).push(r[5]);
     });
+    const novas = new Map();
+    const abaNovas = livro.getSheetByName(PMAS.abas.novas);
+    if (abaNovas) linhas_(abaNovas).forEach(r => {
+      if (!novas.has(r[0])) novas.set(r[0], []);
+      novas.get(r[0]).push({ texto: r[5], ano: Number(r[6]) });
+    });
     const envios = linhas_(aba_(livro, PMAS.abas.envios)).filter(r => r[15] === 'Recebido').map(r => ({
       id: r[0], recebidoEm: r[1], enviadoEm: r[2], nome: r[3], cargo: r[4], setor: r[5], dataPreenchimento: r[6], telefone: r[7], email: r[8], eixo: r[9],
       total: Number(r[10]), sim: Number(r[11]), nao: Number(r[12]), percentualExecucao: Number(r[13]),
-      metas: detalhes.get(r[0]) || [], inclusaoMetas: incluidas.get(r[0]) || []
+      metas: detalhes.get(r[0]) || [], inclusaoMetas: incluidas.get(r[0]) || [], novasMetas: novas.get(r[0]) || []
     })).reverse();
     return { ok: true, autenticado: true, atualizadoEm: new Date().toISOString(), eixos: eixos_().map(e => e.nome), envios };
   } finally { lock.releaseLock(); }
@@ -201,7 +226,13 @@ function garantirAba_(livro, nome, cabecalho) {
   if (folha.getMaxColumns() < cabecalho.length) folha.insertColumnsAfter(folha.getMaxColumns(), cabecalho.length - folha.getMaxColumns());
   if (folha.getLastRow()) {
     const atual = folha.getRange(1, 1, 1, cabecalho.length).getValues()[0];
-    if (JSON.stringify(atual) !== JSON.stringify(cabecalho)) throw new Error('Cabeçalho incompatível na aba "' + nome + '". Nenhum dado foi apagado.');
+    if (JSON.stringify(atual) !== JSON.stringify(cabecalho)) {
+      const antigo = PMAS.metas.slice(0, 6);
+      const podeMigrar = nome === PMAS.abas.metas && JSON.stringify(atual.slice(0, 6)) === JSON.stringify(antigo) && !atual[6]
+        && (folha.getLastRow() < 2 || folha.getRange(2, 7, folha.getLastRow() - 1, 1).getValues().every(linha => linha[0] === ''));
+      if (!podeMigrar) throw new Error('Cabeçalho incompatível na aba "' + nome + '". Nenhum dado foi apagado.');
+      folha.getRange(1, 7, 1, 1).setValues([[PMAS.metas[6]]]);
+    }
   } else {
     folha.getRange(1, 1, 1, cabecalho.length).setValues([cabecalho]);
   }

@@ -11,13 +11,13 @@ function load(file) {
       const classes = new Set();
       nodes.set(id, { value: '', textContent: '', innerHTML: '', style: {}, dataset: {}, attributes: {}, type: 'password',
         classList: { add(name) { classes.add(name); }, remove(name) { classes.delete(name); }, toggle(name, on) { on ? classes.add(name) : classes.delete(name); }, contains(name) { return classes.has(name); } },
-        setAttribute(name, value) { this.attributes[name] = value; }, querySelectorAll() { return []; }, focus() {} });
+        setAttribute(name, value) { this.attributes[name] = value; }, querySelector(selector) { return node(id + ':' + selector); }, querySelectorAll() { return []; }, focus() {}, scrollIntoView() {} });
     }
     return nodes.get(id);
   };
   const context = { console: { warn() {}, error() {}, log() {} }, URL, Blob, Date, Event,
     window: { PMAS_CONFIG: { appsScriptUrl: 'https://example.com/exec' }, setTimeout() {}, clearTimeout() {} },
-    document: { addEventListener() {}, getElementById: node },
+    document: { addEventListener() {}, getElementById: node, querySelectorAll:()=>[], querySelector:()=>null },
     localStorage: { getItem: key => storage.get(key) || null, setItem: (key, value) => storage.set(key, value), removeItem: key => storage.delete(key) },
     alert: message => alerts.push(message), fetch: async () => ({ ok: true, json: async () => ({ ok: true, id: 'recebido' }) })
   };
@@ -69,9 +69,14 @@ function sending() {
   return a;
 }
 
+function submissionResponse(response) {
+  return async (url, options) => options?.method === 'POST' ? response(url, options)
+    : { ok: true, json: async () => ({ ok: true, versaoFormulario: 2 }) };
+}
+
 test('rejeição do servidor preserva rascunho e referência para nova tentativa', async () => {
   const a = sending();
-  a.context.fetch = async () => ({ ok: true, json: async () => ({ ok: false, mensagem: 'Dados inválidos' }) });
+  a.context.fetch = submissionResponse(async () => ({ ok: true, json: async () => ({ ok: false, mensagem: 'Dados inválidos' }) }));
   await a.run('enviarFormulario()');
   assert.equal(a.run('cleared'), false); assert.equal(a.run('success'), false);
   assert(a.alerts[0].includes('Dados inválidos'));
@@ -81,7 +86,7 @@ test('rejeição do servidor preserva rascunho e referência para nova tentativa
 
 test('resposta sem ID ou erro de rede não mostra sucesso', async () => {
   for (const response of [async () => ({ ok: true, json: async () => ({ ok: true }) }), async () => { throw Error('Falha de conexão'); }]) {
-    const a = sending(); a.context.fetch = response;
+    const a = sending(); a.context.fetch = submissionResponse(response);
     await a.run('enviarFormulario()');
     assert.equal(a.run('cleared'), false); assert.equal(a.run('success'), false);
   }
@@ -89,7 +94,7 @@ test('resposta sem ID ou erro de rede não mostra sucesso', async () => {
 
 test('apenas confirmação explícita de gravação permite concluir o envio', async () => {
   const a = sending(); let options;
-  a.context.fetch = async (url, config) => { options = config; return { ok: true, json: async () => ({ ok: true, id: 'id-confirmado' }) }; };
+  a.context.fetch = submissionResponse(async (url, config) => { options = config; return { ok: true, json: async () => ({ ok: true, id: 'id-confirmado' }) }; });
   await a.run('enviarFormulario()');
   assert.equal(a.run('cleared'), true); assert.equal(a.run('success'), true);
   assert.notEqual(options.mode, 'no-cors');
@@ -140,4 +145,65 @@ test('loading e erro de acesso têm estados acessíveis sem trocar a autenticaç
   a.run('togglePassword();setLoginError("");');
   assert.equal(a.nodes.get('passwordToggle').attributes['aria-pressed'], 'false');
   assert.equal(a.nodes.get('loginPassword').attributes['aria-invalid'], 'false');
+});
+
+test('Não exige justificativa antes da revisão; Sim não envia texto residual', () => {
+  const a=load('script.js');
+  a.run(`state.identificacao.eixo='COMPLEXO DA CIDADANIA'; getActiveMetas().forEach(item=>{state.metas[item.id]={resposta:'sim',justificativa:''}}); state.metas[getActiveMetas()[0].id].resposta='nao';`);
+  assert.equal(a.run('validateAllMetas()'),false);
+  const id=a.run('getActiveMetas()[0].id');
+  assert.equal(a.nodes.get('reason-'+id).attributes['aria-invalid'],'true');
+  a.run(`state.metas[getActiveMetas()[0].id].justificativa='Aguardando equipe.'`);
+  assert.equal(a.run('validateAllMetas()'),true);
+  assert.equal(a.run('buildPayload().metas[0].justificativa'),'Aguardando equipe.');
+  a.run(`state.metas[getActiveMetas()[0].id].resposta='sim'`);
+  assert.equal(a.run('buildPayload().metas[0].justificativa'),'');
+});
+
+test('novas metas mantêm texto e ano por eixo, exigem ambos e não alteram execução', () => {
+  const a=load('script.js');
+  a.run(`state.identificacao.eixo='COMPLEXO DA CIDADANIA'; state.novasMetasPorEixo[state.identificacao.eixo]=[{texto:'Meta futura',ano:''}];`);
+  assert.equal(a.run('validateFutureGoals()'),false);
+  a.run(`getFutureGoals()[0].ano='2027'`);assert.equal(a.run('validateFutureGoals()'),true);
+  assert.equal(a.run('buildPayload().novasMetas[0].ano'),2027);
+  assert.equal(a.run('getStats().total'),6);
+  a.run(`state.identificacao.eixo='GESTÃO SUAS'`);assert.equal(a.run('getFutureGoals().length'),0);
+  a.run(`state.identificacao.eixo='COMPLEXO DA CIDADANIA';getFutureGoals()[0].ano='2030'`);assert.equal(a.run('validateFutureGoals()'),false);
+});
+
+test('rascunho preserva justificativas e planejamento com ano sem misturar eixos', () => {
+  const a=load('script.js');
+  a.run(`state.identificacao.eixo='COMPLEXO DA CIDADANIA';state.metas[getActiveMetas()[0].id]={resposta:'nao',justificativa:'Motivo salvo.'};state.novasMetasPorEixo[state.identificacao.eixo]=[{texto:'Planejamento salvo',ano:'2028'}];saveState(false);state=loadState()`);
+  assert.equal(a.run('state.metas[getActiveMetas()[0].id].justificativa'),'Motivo salvo.');
+  assert.equal(a.run('getFutureGoals()[0].ano'),'2028');
+});
+
+test('campo de justificativa aparece e é obrigatório somente para Não', () => {
+  const a=load('script.js');
+  a.run(`state.identificacao.eixo='COMPLEXO DA CIDADANIA';state.metas[getActiveMetas()[0].id]={resposta:'nao',justificativa:'<texto de teste>'}`);
+  let html=a.run('renderMetaCard(getActiveMetas()[0],categories[0])');
+  assert(html.includes('&lt;texto de teste&gt;'));assert(!html.includes('hidden>'));
+  assert(html.includes('maxlength="2000" required'));
+  a.run(`state.metas[getActiveMetas()[0].id].resposta='sim'`);
+  html=a.run('renderMetaCard(getActiveMetas()[0],categories[0])');
+  assert(html.includes('hidden>'));assert(html.includes('maxlength="2000" disabled'));
+});
+
+test('servidor antigo bloqueia envio antes do POST para não descartar os novos campos', async () => {
+  const a=sending();let posts=0;
+  a.context.fetch=async(url,options)=>{if(options?.method==='POST')posts++;return{ok:true,json:async()=>({ok:true,configurado:true})}};
+  await a.run('enviarFormulario()');
+  assert.equal(posts,0);assert.equal(a.run('success'),false);assert.equal(a.run('cleared'),false);
+  assert(a.alerts[0].includes('recebimento precisa ser atualizado'));
+});
+
+test('painel e CSV exibem motivos e planejamento anual com texto escapado', async () => {
+  const a=load('painel.js');let blob;
+  a.context.URL={createObjectURL:b=>{blob=b;return 'blob:teste'},revokeObjectURL(){}};
+  a.context.document.createElement=()=>({click(){}});
+  a.run(`dashboardState.submissions=dashboardState.filtered=[{id:'novo',sim:1,nao:1,metas:[{codigo:'X',texto:'Meta original',resposta:'nao',justificativa:'<script>motivo</script>'}],novasMetas:[{texto:'Planejamento <img>',ano:2028}]}];openDetails('novo');exportCsv()`);
+  const details=a.nodes.get('detailContent').innerHTML;
+  assert(details.includes('&lt;script&gt;motivo'));assert(details.includes('2028'));assert(details.includes('Planejamento &lt;img&gt;'));
+  assert(!details.includes('<script>'));
+  const csv=await blob.text();assert(csv.includes('Justificativas das metas não concluídas'));assert(csv.includes('2028: Planejamento <img>'));
 });

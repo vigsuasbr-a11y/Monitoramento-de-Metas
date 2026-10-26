@@ -257,7 +257,7 @@
                 <span class="section-icon" aria-hidden="true"><i data-lucide="list-plus"></i></span>
                 <div>
                   <h3 id="additionalGoalsTitle">Inclusão de Metas Concluídas</h3>
-                  <p>Sentiu falta de alguma meta neste eixo? Inclua abaixo as metas que ainda não aparecem na lista. Este campo é opcional.</p>
+                  <p>Registre metas que já foram concluídas pelo setor e ainda não aparecem na lista deste eixo. Este campo é opcional.</p>
                 </div>
               </div>
               <label class="additional-goals-label" for="additionalGoalInput">Qual meta você deseja incluir?</label>
@@ -269,6 +269,19 @@
               <p class="additional-goals-help" id="additionalGoalsHelp">Digite uma meta e pressione Enter ou clique em “Adicionar meta”. Repita para incluir quantas precisar. Sugestões aparecem conforme você digita metas já incluídas em outros eixos.</p>
               <ul class="additional-goals-tags" id="additionalGoalsTags" aria-label="Metas incluídas"></ul>
               <p class="additional-goals-status" id="additionalGoalsStatus" role="status" aria-live="polite"></p>
+            </section>
+
+            <section class="additional-goals future-goals" aria-labelledby="futureGoalsTitle">
+              <div class="additional-goals-heading">
+                <span class="section-icon" aria-hidden="true"><i data-lucide="calendar-plus"></i></span>
+                <div>
+                  <h3 id="futureGoalsTitle">Inclusão de Novas Metas (Período anual)</h3>
+                  <p>Planeje as metas futuras deste eixo. Para cada nova meta, informe o que será realizado e o ano previsto para sua conclusão, dentro do PMAS 2026–2029. Este campo é opcional.</p>
+                </div>
+              </div>
+              <div id="futureGoalsRows" class="future-goals-rows"></div>
+              <button type="button" class="secondary-button" id="addFutureGoalButton"><i data-lucide="plus"></i> Adicionar nova meta</button>
+              <p class="additional-goals-status" id="futureGoalsStatus" role="status" aria-live="polite"></p>
             </section>
 
             <div class="answers-error" id="answersError" role="alert" aria-live="polite">
@@ -327,6 +340,11 @@
                   <h3>Inclusão de Metas Concluídas</h3>
                 </div>
                 <ul id="additionalGoalsReview"></ul>
+              </article>
+
+              <article class="review-list-card additional-goals-review">
+                <div class="review-list-head"><i data-lucide="calendar-plus"></i><h3>Inclusão de Novas Metas (Período anual)</h3></div>
+                <ul id="futureGoalsReview"></ul>
               </article>
 
             </div>

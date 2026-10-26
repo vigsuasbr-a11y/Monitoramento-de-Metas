@@ -22,8 +22,9 @@ Se um cabeçalho foi alterado manualmente e ficou incompatível, o script interr
 | --- | --- |
 | Resumo | Quantidade de envios, Sim, Não, percentual e quantidade de metas incluídas, por eixo |
 | Envios | Uma linha por envio, com identificação, totais, datas e código de identificação |
-| Respostas das metas | Uma linha para cada meta respondida, com código, categoria e resposta |
+| Respostas das metas | Uma linha por meta, com código, categoria, resposta e justificativa da não conclusão |
 | Metas concluídas incluídas | Uma linha para cada meta concluída escrita pelo participante |
+| Novas metas planejadas | Uma linha por meta futura, com descrição e ano previsto de conclusão (2026–2029) |
 | Órgão Gestor | Envios do eixo, com uma coluna para cada uma das suas metas |
 | Gestão SUAS | Mesmo modelo, para Gestão SUAS |
 | Fundo Municipal | Mesmo modelo, para Fundo Municipal |
@@ -79,7 +80,7 @@ O endpoint aceita a consulta autenticada por POST (`acao: "painel"`, `sistema`, 
 
 ## 6. Teste inicial na nova planilha
 
-1. Confira se todas as 13 abas foram criadas.
+1. Confira se todas as 14 abas foram criadas.
 2. Faça um envio identificado como teste, selecionando um eixo e respondendo todas as suas metas.
 3. Inclua duas metas concluídas no campo adicional.
 4. Confira uma linha em Envios e uma linha na aba do eixo escolhido.
@@ -106,3 +107,25 @@ node --test apps-script/test.cjs
 ```
 
 Os testes usam uma planilha simulada, sem acessar a conta Google ou registrar respostas reais. A autorização, a implantação e a gravação na planilha real devem ser verificadas após a instalação.
+
+
+## 8. Atualização: justificativas e planejamento anual (versão 2)
+
+Esta atualização não está publicada no site até a implantação do recebimento estar pronta.
+
+1. Abra o mesmo projeto do Apps Script vinculado à planilha atual.
+2. Substitua o conteúdo de Código.gs pelo Code.gs atualizado completo. Preserve arquivos administrativos adicionais, se houver.
+3. Salve e execute **criarAbas**. A instalação migra a aba Respostas das metas acrescentando a coluna Justificativa da não conclusão e cria a aba Novas metas planejadas. São 14 abas. Dados antigos, colunas dos eixos, identificador da planilha e senha são preservados. Não crie outra planilha e não altere as propriedades existentes.
+4. Use **Implantar → Gerenciar implantações → Editar (lápis) → Nova versão → Implantar**, mantendo a mesma URL.
+5. Ao abrir a URL /exec, a resposta deve conter versaoFormulario: 2 e configurado: true.
+6. Só então publique os arquivos novos do formulário e do painel. O formulário verifica a versão antes de enviar e mantém o rascunho se o servidor ainda for antigo.
+
+Cada resposta nao exige justificativa não vazia, de até 2.000 caracteres. O servidor também valida a obrigação, sem depender do navegador. Para sim, a justificativa enviada é descartada. Registros históricos sem justificativa continuam consultáveis e aparecem como “Não informada neste registro”.
+
+O campo opcional novasMetas contém objetos {texto, ano}. Cada meta incluída exige descrição de até 1.000 caracteres e ano inteiro de 2026 a 2029. São permitidos até 100 itens e 40.000 caracteres de descrição no conjunto. Não é obrigatório adicionar metas futuras. Elas ficam separadas das metas já concluídas e não alteram totais ou percentuais de execução das metas originais.
+
+O painel apresenta justificativas e planejamento anual nos detalhes e acrescenta colunas na exportação CSV. As 11 colunas anteriores do CSV permanecem na mesma ordem. Os cálculos e filtros não mudam.
+
+A repetição de envios considera justificativas e novas metas. A migração pode ser repetida sem apagar respostas. O script só acrescenta a coluna na estrutura antiga conhecida; interrompe diante de cabeçalhos incompatíveis.
+
+Não foram enviados dados de teste à planilha de produção para validar esta atualização.
