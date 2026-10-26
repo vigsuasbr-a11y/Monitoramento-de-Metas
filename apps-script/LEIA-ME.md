@@ -111,7 +111,7 @@ Os testes usam uma planilha simulada, sem acessar a conta Google ou registrar re
 
 ## 8. Atualização: justificativas e planejamento anual (versão 2)
 
-Esta atualização não está publicada no site até a implantação do recebimento estar pronta.
+O formulário e o painel utilizam o recebimento de versão 2. A implantação atual está configurada em `config.js`.
 
 1. Abra o mesmo projeto do Apps Script vinculado à planilha atual.
 2. Substitua o conteúdo de Código.gs pelo Code.gs atualizado completo. Preserve arquivos administrativos adicionais, se houver.
